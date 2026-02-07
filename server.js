@@ -14,8 +14,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Stripe setup
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const STRIPE_PK = process.env.STRIPE_PK;
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || '');
+const STRIPE_PK = process.env.STRIPE_PK || '';
 
 // In-memory scan history (persisted to disk)
 const DATA_DIR = path.join(__dirname, 'data');
@@ -47,139 +47,161 @@ const WCAG_RULES = {
     id: 'missing-alt', name: 'Images missing alt text',
     wcag: 'WCAG 2.1 SC 1.1.1', level: 'A', principle: 'Perceivable',
     description: 'All non-decorative images must have alternative text that describes their content.',
+    fix: 'Add an alt="" attribute to every <img> tag. Describe what the image shows in 1-2 sentences (e.g., alt="Company logo"). For decorative images, use alt="" (empty). This is the #1 issue in ADA lawsuits.',
     impact: 'critical', url: 'https://www.w3.org/WAI/WCAG21/Understanding/non-text-content.html'
   },
   'empty-alt': {
     id: 'empty-alt', name: 'Images with empty alt on non-decorative elements',
     wcag: 'WCAG 2.1 SC 1.1.1', level: 'A', principle: 'Perceivable',
     description: 'Empty alt="" should only be used for decorative images. Functional images need descriptive alt text.',
+    fix: 'Review each image with alt="". If it conveys meaning (product photo, chart, icon with function), add descriptive text. Only keep alt="" empty for purely decorative images like background patterns.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/non-text-content.html'
   },
   'missing-lang': {
     id: 'missing-lang', name: 'Missing page language',
     wcag: 'WCAG 2.1 SC 3.1.1', level: 'A', principle: 'Understandable',
     description: 'The default human language of each web page must be programmatically determined.',
+    fix: 'Add lang="en" to your opening <html> tag: <html lang="en">. Change "en" to your language code (e.g., "es" for Spanish, "fr" for French). This takes 10 seconds and helps screen readers pronounce words correctly.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/language-of-page.html'
   },
   'missing-title': {
     id: 'missing-title', name: 'Missing page title',
     wcag: 'WCAG 2.1 SC 2.4.2', level: 'A', principle: 'Operable',
     description: 'Web pages must have titles that describe topic or purpose.',
+    fix: 'Add a <title> tag inside <head> that clearly describes the page, e.g., <title>About Us - Company Name</title>. Each page should have a unique, descriptive title.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/page-titled.html'
   },
   'missing-heading': {
     id: 'missing-heading', name: 'No heading structure',
     wcag: 'WCAG 2.1 SC 1.3.1', level: 'A', principle: 'Perceivable',
     description: 'Pages should use heading elements to convey document structure.',
+    fix: 'Add heading tags (H1-H6) to structure your content. Start with one <h1> for the page title, then use <h2> for sections, <h3> for subsections. Screen reader users navigate by headings — it\'s like a table of contents.',
     impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html'
   },
   'skipped-heading': {
     id: 'skipped-heading', name: 'Skipped heading levels',
     wcag: 'WCAG 2.1 SC 1.3.1', level: 'A', principle: 'Perceivable',
     description: 'Heading levels should not be skipped (e.g., h1 → h3 without h2).',
+    fix: 'Fix the heading hierarchy so levels aren\'t skipped. Go H1 → H2 → H3, not H1 → H3. Think of it like an outline — you wouldn\'t skip from Chapter 1 to Section 1.1.1 without 1.1.',
     impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html'
   },
   'missing-form-label': {
     id: 'missing-form-label', name: 'Form inputs without labels',
     wcag: 'WCAG 2.1 SC 1.3.1 / 4.1.2', level: 'A', principle: 'Perceivable',
     description: 'All form inputs must have associated labels for screen reader users.',
+    fix: 'Add a <label for="fieldId"> element for each input, where "for" matches the input\'s "id". Example: <label for="email">Email</label> <input id="email" type="email">. Alternatively, use aria-label="Email" on the input.',
     impact: 'critical', url: 'https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html'
   },
   'empty-link': {
     id: 'empty-link', name: 'Links with no accessible text',
     wcag: 'WCAG 2.1 SC 2.4.4', level: 'A', principle: 'Operable',
     description: 'Links must have discernible text that describes their destination.',
+    fix: 'Add text content inside each <a> tag, or add aria-label="Description" to links that only contain icons/images. Screen readers announce "link" but can\'t say where it goes without text.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/link-purpose-in-context.html'
   },
   'empty-button': {
     id: 'empty-button', name: 'Buttons with no accessible text',
     wcag: 'WCAG 2.1 SC 4.1.2', level: 'A', principle: 'Robust',
     description: 'Buttons must have discernible text that describes their action.',
+    fix: 'Add text content or aria-label to buttons. Icon-only buttons need aria-label="Close" or similar. Screen readers just say "button" without a label — users can\'t tell what it does.',
     impact: 'critical', url: 'https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html'
   },
   'missing-viewport': {
     id: 'missing-viewport', name: 'Missing viewport meta tag',
     wcag: 'WCAG 2.1 SC 1.4.10', level: 'AA', principle: 'Perceivable',
     description: 'Pages should include a viewport meta tag for mobile accessibility.',
+    fix: 'Add this to your <head>: <meta name="viewport" content="width=device-width, initial-scale=1">. Do NOT add maximum-scale=1 or user-scalable=no — people with low vision need to zoom.',
     impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/reflow.html'
   },
   'no-skip-link': {
     id: 'no-skip-link', name: 'No skip navigation link',
     wcag: 'WCAG 2.1 SC 2.4.1', level: 'A', principle: 'Operable',
     description: 'A mechanism should be available to bypass blocks of content that are repeated on multiple pages.',
+    fix: 'Add a "Skip to main content" link as the first element in your <body>: <a href="#main" class="skip-link">Skip to main content</a>. Then add id="main" to your main content area. Hide it visually but keep it accessible.',
     impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/bypass-blocks.html'
   },
   'missing-landmark': {
     id: 'missing-landmark', name: 'No ARIA landmarks or semantic HTML5',
     wcag: 'WCAG 2.1 SC 1.3.1', level: 'A', principle: 'Perceivable',
     description: 'Pages should use ARIA landmarks or HTML5 semantic elements (main, nav, header, footer).',
+    fix: 'Replace generic <div> wrappers with semantic HTML5: use <header> for the top bar, <nav> for navigation, <main> for primary content, and <footer> for the bottom. This gives screen readers a page map.',
     impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html'
   },
   'low-contrast-text': {
     id: 'low-contrast-text', name: 'Potential low contrast text',
     wcag: 'WCAG 2.1 SC 1.4.3', level: 'AA', principle: 'Perceivable',
     description: 'Text must have a contrast ratio of at least 4.5:1 against its background (3:1 for large text).',
+    fix: 'Use a contrast checker tool (like WebAIM Contrast Checker) and ensure all text has at least 4.5:1 contrast ratio against its background. Darken light text or lighten dark backgrounds. Large text (18px+ bold or 24px+) only needs 3:1.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html'
   },
   'autoplay-media': {
     id: 'autoplay-media', name: 'Auto-playing media',
     wcag: 'WCAG 2.1 SC 1.4.2', level: 'A', principle: 'Perceivable',
     description: 'Audio that plays automatically for more than 3 seconds must have a mechanism to pause or stop.',
+    fix: 'Remove the autoplay attribute from <video> and <audio> tags. If you must autoplay, add muted and provide visible pause/stop controls. Auto-playing audio interferes with screen readers.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/audio-control.html'
   },
   'tabindex-positive': {
     id: 'tabindex-positive', name: 'Positive tabindex values',
     wcag: 'WCAG 2.1 SC 2.4.3', level: 'A', principle: 'Operable',
     description: 'Avoid positive tabindex values; they create confusing tab order for keyboard users.',
+    fix: 'Remove positive tabindex values (tabindex="1", "2", etc.) and use tabindex="0" instead. Rely on DOM order to control tab sequence. Positive values override the natural flow and confuse keyboard users.',
     impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/focus-order.html'
   },
   'missing-table-header': {
     id: 'missing-table-header', name: 'Data tables without headers',
     wcag: 'WCAG 2.1 SC 1.3.1', level: 'A', principle: 'Perceivable',
     description: 'Data tables must use th elements or scope attributes to identify headers.',
+    fix: 'Replace the first row\'s <td> cells with <th scope="col"> for column headers. For row headers, use <th scope="row">. This lets screen readers announce "Column: Name, Row: John Smith" as users navigate.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html'
   },
   'meta-refresh': {
     id: 'meta-refresh', name: 'Meta refresh redirect',
     wcag: 'WCAG 2.1 SC 2.2.1', level: 'A', principle: 'Operable',
     description: 'Pages should not auto-redirect using meta refresh. Users must control timing.',
+    fix: 'Remove <meta http-equiv="refresh"> and use server-side redirects (HTTP 301/302) instead. Auto-refresh disorients screen reader users who may be in the middle of reading content.',
     impact: 'critical', url: 'https://www.w3.org/WAI/WCAG21/Understanding/timing-adjustable.html'
   },
   'inline-styles-text': {
     id: 'inline-styles-text', name: 'Inline text styling (potential contrast issues)',
     wcag: 'WCAG 2.1 SC 1.4.3', level: 'AA', principle: 'Perceivable',
     description: 'Inline color styles may cause contrast issues that are hard to audit.',
+    fix: 'Move inline color styles to CSS classes. Test all color combinations with a contrast checker to ensure 4.5:1 minimum ratio.',
     impact: 'minor', url: 'https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html'
   },
-  // NEW RULES
   'color-contrast-inline': {
     id: 'color-contrast-inline', name: 'Inline color contrast issues',
     wcag: 'WCAG 2.1 SC 1.4.3', level: 'AA', principle: 'Perceivable',
     description: 'Inline styles set text/background colors that may fail the 4.5:1 contrast ratio requirement.',
+    fix: 'Change the text color or background color so the contrast ratio reaches at least 4.5:1. Use WebAIM\'s contrast checker to find compliant color pairs. The exact failing elements and ratios are listed above.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html'
   },
   'keyboard-trap': {
     id: 'keyboard-trap', name: 'Potential keyboard trap',
     wcag: 'WCAG 2.1 SC 2.1.2', level: 'A', principle: 'Operable',
     description: 'Content must not trap keyboard focus. Users must be able to navigate away using standard keys.',
+    fix: 'Ensure all interactive components (modals, widgets, embedded content) can be exited with Tab or Escape. Never use preventDefault() on key events without providing an escape mechanism.',
     impact: 'critical', url: 'https://www.w3.org/WAI/WCAG21/Understanding/no-keyboard-trap.html'
   },
   'missing-focus-style': {
     id: 'missing-focus-style', name: 'Focus styles suppressed',
     wcag: 'WCAG 2.1 SC 2.4.7', level: 'AA', principle: 'Operable',
     description: 'Interactive elements must have a visible focus indicator for keyboard users. outline:none or outline:0 without alternative styling removes this.',
+    fix: 'Remove outline:none/outline:0 from your CSS, or replace it with a custom focus style: :focus { outline: 2px solid #2563eb; outline-offset: 2px; }. You can use :focus-visible to only show focus rings for keyboard users.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/focus-visible.html'
   },
   'generic-link-text': {
     id: 'generic-link-text', name: 'Generic or ambiguous link text',
     wcag: 'WCAG 2.1 SC 2.4.4', level: 'A', principle: 'Operable',
     description: 'Link text should describe the destination. Phrases like "click here", "read more", or "learn more" are ambiguous without context.',
+    fix: 'Replace generic text like "click here" or "read more" with descriptive text: instead of "Click here to view pricing", write "View pricing plans". Screen reader users often navigate by listing all links — "click here" repeated 10x is useless.',
     impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/link-purpose-in-context.html'
   },
   'missing-keyboard-access': {
     id: 'missing-keyboard-access', name: 'Non-interactive elements with click handlers',
     wcag: 'WCAG 2.1 SC 2.1.1', level: 'A', principle: 'Operable',
     description: 'Elements with click handlers (onclick) that are not natively interactive (links, buttons) must also have keyboard access via tabindex and keydown handlers.',
+    fix: 'Replace clickable <div> and <span> elements with <button> or <a> tags. If you must use a div, add role="button", tabindex="0", and an onkeydown handler that triggers on Enter/Space.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/keyboard.html'
   }
 };
@@ -802,8 +824,12 @@ app.get('/api/scan/:id/pdf', (req, res) => {
       doc.fontSize(9).font('Helvetica')
         .text(`   WCAG Reference: ${issue.wcag} (Level ${issue.level})`)
         .text(`   ${issue.description}`)
-        .text(`   Occurrences: ${issue.count}`)
-        .text(`   Learn more: ${issue.url}`);
+        .text(`   Occurrences: ${issue.count}`);
+      if (issue.fix) {
+        doc.font('Helvetica-Bold').text(`   How to fix:`, { continued: true })
+          .font('Helvetica').text(` ${issue.fix}`);
+      }
+      doc.text(`   Learn more: ${issue.url}`);
       if (issue.elements && issue.elements.length > 0) {
         doc.text(`   Examples: ${issue.elements.slice(0, 3).join(', ')}`);
       }
@@ -973,6 +999,7 @@ a{color:var(--accent2);text-decoration:none}
 .impact-minor{background:rgba(149,165,166,0.2);color:var(--muted)}
 .issue-wcag{font-size:0.8rem;color:var(--accent2);margin-bottom:4px}
 .issue-desc{font-size:0.85rem;color:var(--muted)}
+.issue-fix{font-size:0.85rem;color:var(--green);background:rgba(0,184,148,0.08);border:1px solid rgba(0,184,148,0.2);border-left:3px solid var(--green);padding:10px 14px;border-radius:6px;margin-top:8px;line-height:1.6}
 .issue-elements{font-family:monospace;font-size:0.75rem;background:#1a1a2e;padding:8px;border-radius:6px;margin-top:8px;color:var(--orange);overflow-x:auto}
 .issue-link{font-size:0.75rem;color:var(--accent2);margin-top:4px;display:inline-block}
 .passes-section{margin-top:20px}
@@ -1282,6 +1309,7 @@ function displayResults(data) {
       </div>
       <div class="issue-wcag">📋 \${issue.wcag} — Level \${issue.level} (\${issue.principle})</div>
       <div class="issue-desc">\${issue.description}</div>
+      \${issue.fix ? \`<div class="issue-fix">💡 <strong>How to fix:</strong> \${issue.fix}</div>\` : ''}
       \${issue.elements && issue.elements.length > 0 ? \`<div class="issue-elements">\${issue.elements.map(e => escapeHtml(e)).join('<br>')}</div>\` : ''}
       <a href="\${issue.url}" target="_blank" class="issue-link">📖 WCAG Reference →</a>
     </div>
