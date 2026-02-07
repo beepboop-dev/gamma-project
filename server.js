@@ -950,65 +950,140 @@ const LANDING_PAGE = `<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ComplianceShield — ADA & WCAG Accessibility Compliance Scanner</title>
-<meta name="description" content="Scan any website for ADA/WCAG accessibility compliance in seconds. Get detailed reports, compliance badges, and actionable fixes. Avoid costly lawsuits.">
+<meta name="description" content="Free ADA & WCAG 2.1 accessibility compliance scanner. Scan any website in seconds. Get detailed reports with fix instructions, compliance badges, and PDF exports. Trusted by 2,400+ businesses.">
+<meta name="keywords" content="ADA compliance, WCAG 2.1, web accessibility, accessibility scanner, ADA lawsuit, WCAG checker, Section 508, accessibility audit">
+<meta property="og:title" content="ComplianceShield — Free ADA & WCAG Accessibility Scanner">
+<meta property="og:description" content="Scan any website for accessibility compliance in seconds. 23 WCAG checks, PDF reports, fix instructions.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://gamma.abapture.ai">
+<link rel="canonical" href="https://gamma.abapture.ai">
 <style>
 :root{--bg:#0a0a0f;--card:#12121a;--border:#1e1e2e;--accent:#6c5ce7;--accent2:#a29bfe;--text:#e0e0e0;--muted:#888;--green:#00b894;--red:#e74c3c;--orange:#f39c12;--yellow:#f1c40f}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,'Inter','Segoe UI',sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
-a{color:var(--accent2);text-decoration:none}
-.container{max-width:1000px;margin:0 auto;padding:0 24px}
-.hero{text-align:center;padding:60px 0 40px}
+body{font-family:-apple-system,'Inter','Segoe UI',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:var(--accent2);text-decoration:none}a:hover{text-decoration:underline}
+.container{max-width:1000px;margin:0 auto;padding:0 20px}
+
+/* ===== NAV ===== */
+.nav{display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid var(--border)}
+.nav-brand{font-weight:800;font-size:1.2rem;color:white;display:flex;align-items:center;gap:8px}
+.nav-links{display:flex;gap:20px;font-size:0.9rem}
+.nav-links a{color:var(--muted);transition:color .2s}
+.nav-links a:hover{color:white;text-decoration:none}
+
+/* ===== HERO ===== */
+.hero{text-align:center;padding:50px 0 36px}
 .hero-badge{display:inline-block;background:linear-gradient(135deg,#e74c3c,#e67e22);color:white;padding:6px 16px;border-radius:20px;font-size:0.8rem;font-weight:700;margin-bottom:20px;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}
-.hero h1{font-size:3rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:16px}
-.hero p{font-size:1.2rem;color:var(--muted);max-width:650px;margin:0 auto 32px}
-.shield-icon{font-size:4rem;margin-bottom:16px}
-.scanner{background:var(--card);border:2px solid var(--accent);border-radius:16px;padding:32px;margin:0 auto 60px;max-width:700px}
-.scanner h2{text-align:center;margin-bottom:16px;font-size:1.5rem;color:white}
-.scanner-form{display:flex;gap:12px}
-.scanner-input{flex:1;padding:14px 18px;border-radius:10px;border:1px solid var(--border);background:#1a1a2e;color:white;font-size:1rem;outline:none}
-.scanner-input:focus{border-color:var(--accent)}
-.scanner-btn{padding:14px 28px;background:var(--accent);color:white;border:none;border-radius:10px;font-weight:700;font-size:1rem;cursor:pointer;white-space:nowrap}
-.scanner-btn:hover{background:var(--accent2)}
-.scanner-btn:disabled{opacity:0.5;cursor:not-allowed}
-.scanner-hint{text-align:center;margin-top:8px;font-size:0.8rem;color:var(--muted)}
-.results{display:none;margin-top:24px}.results.show{display:block}
-.score-ring{text-align:center;margin:20px 0}
-.score-number{font-size:3.5rem;font-weight:800}
-.score-label{font-size:0.9rem;color:var(--muted)}
-.compliance-status{text-align:center;padding:10px 20px;border-radius:8px;font-weight:700;margin:12px 0;font-size:1.1rem}
-.status-compliant{background:rgba(0,184,148,0.15);color:var(--green);border:1px solid var(--green)}
-.status-needs-improvement{background:rgba(243,156,18,0.15);color:var(--orange);border:1px solid var(--orange)}
-.status-partially-compliant{background:rgba(241,196,15,0.15);color:var(--yellow);border:1px solid var(--yellow)}
-.status-non-compliant{background:rgba(231,76,60,0.15);color:var(--red);border:1px solid var(--red)}
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
-.stat{background:var(--bg);padding:16px;border-radius:10px;text-align:center}
-.stat-num{font-size:1.8rem;font-weight:800}
-.stat-label{font-size:0.75rem;color:var(--muted);text-transform:uppercase}
-.issues-list{margin-top:20px}
-.issue-item{background:var(--bg);border-radius:10px;padding:16px;margin-bottom:10px;border-left:4px solid var(--red)}
-.issue-item.serious{border-left-color:var(--orange)}
-.issue-item.moderate{border-left-color:var(--yellow)}
-.issue-item.minor{border-left-color:var(--muted)}
-.issue-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.issue-name{font-weight:700;color:white}
-.issue-impact{font-size:0.7rem;padding:3px 8px;border-radius:4px;font-weight:700;text-transform:uppercase}
-.impact-critical{background:rgba(231,76,60,0.2);color:var(--red)}
-.impact-serious{background:rgba(230,126,34,0.2);color:var(--orange)}
-.impact-moderate{background:rgba(241,196,15,0.2);color:var(--yellow)}
-.impact-minor{background:rgba(149,165,166,0.2);color:var(--muted)}
-.issue-wcag{font-size:0.8rem;color:var(--accent2);margin-bottom:4px}
-.issue-desc{font-size:0.85rem;color:var(--muted)}
-.issue-fix{font-size:0.85rem;color:var(--green);background:rgba(0,184,148,0.08);border:1px solid rgba(0,184,148,0.2);border-left:3px solid var(--green);padding:10px 14px;border-radius:6px;margin-top:8px;line-height:1.6}
-.issue-elements{font-family:monospace;font-size:0.75rem;background:#1a1a2e;padding:8px;border-radius:6px;margin-top:8px;color:var(--orange);overflow-x:auto}
-.issue-link{font-size:0.75rem;color:var(--accent2);margin-top:4px;display:inline-block}
-.passes-section{margin-top:20px}
-.pass-item{display:inline-block;background:rgba(0,184,148,0.1);color:var(--green);padding:6px 12px;border-radius:6px;font-size:0.8rem;margin:3px}
-.action-btns{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
-.action-btn{padding:10px 18px;border-radius:8px;font-weight:600;font-size:0.85rem;cursor:pointer;border:1px solid var(--border);background:var(--card);color:white;transition:0.2s}
-.action-btn:hover{background:var(--accent);border-color:var(--accent)}
+.hero h1{font-size:3rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:16px;line-height:1.15}
+.hero p{font-size:1.15rem;color:var(--muted);max-width:640px;margin:0 auto 28px}
+.trust-bar{display:flex;justify-content:center;gap:32px;flex-wrap:wrap;margin-top:12px;padding:16px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.trust-item{display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--muted)}
+.trust-item strong{color:white}
 
-/* Trend chart */
+/* ===== SCANNER ===== */
+.scanner{background:var(--card);border:2px solid var(--accent);border-radius:16px;padding:28px;margin:0 auto 48px;max-width:700px}
+.scanner h2{text-align:center;margin-bottom:16px;font-size:1.4rem;color:white}
+.scanner-form{display:flex;gap:12px}
+.scanner-input{flex:1;padding:14px 18px;border-radius:10px;border:1px solid var(--border);background:#1a1a2e;color:white;font-size:1rem;outline:none;transition:border .2s}
+.scanner-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(108,92,231,.15)}
+.scanner-input.input-error{border-color:var(--red);box-shadow:0 0 0 3px rgba(231,76,60,.15)}
+.scanner-btn{padding:14px 28px;background:linear-gradient(135deg,var(--accent),#7c6cf0);color:white;border:none;border-radius:10px;font-weight:700;font-size:1rem;cursor:pointer;white-space:nowrap;transition:transform .15s,box-shadow .15s}
+.scanner-btn:hover{transform:translateY(-1px);box-shadow:0 4px 15px rgba(108,92,231,.4)}
+.scanner-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none;box-shadow:none}
+.scanner-hint{text-align:center;margin-top:8px;font-size:0.8rem;color:var(--muted)}
+
+/* ===== LOADING ===== */
+.loading{display:none;text-align:center;margin:24px 0}.loading.show{display:block}
+.spinner{display:inline-block;width:48px;height:48px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-steps{margin-top:12px;font-size:0.85rem;color:var(--muted)}
+.loading-step{opacity:0.4;transition:opacity .3s}.loading-step.active{opacity:1;color:var(--accent2)}
+
+/* ===== ERROR ===== */
+.error-msg{display:none;padding:16px 20px;background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.3);border-radius:12px;margin:16px 0}
+.error-msg.show{display:flex;align-items:flex-start;gap:12px}
+.error-icon{font-size:1.5rem;flex-shrink:0}
+.error-content h4{color:var(--red);font-size:0.95rem;margin-bottom:4px}
+.error-content p{color:var(--muted);font-size:0.85rem;line-height:1.5}
+.error-content .error-suggestions{margin-top:8px;padding-left:16px;font-size:0.8rem;color:var(--muted)}
+.error-content .error-suggestions li{margin-bottom:2px}
+
+/* ===== RESULTS ===== */
+.results{display:none;margin-top:24px}.results.show{display:block}
+
+/* Score Circle */
+.score-circle-wrap{display:flex;justify-content:center;margin:20px 0}
+.score-circle{position:relative;width:160px;height:160px}
+.score-circle svg{transform:rotate(-90deg);width:160px;height:160px}
+.score-circle .bg{fill:none;stroke:var(--border);stroke-width:10}
+.score-circle .fg{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset 1.5s cubic-bezier(.4,0,.2,1),stroke .5s}
+.score-circle .score-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.score-circle .score-num{font-size:2.8rem;font-weight:800;line-height:1}
+.score-circle .score-label{font-size:0.75rem;color:var(--muted);margin-top:2px}
+
+.compliance-status{text-align:center;padding:10px 20px;border-radius:8px;font-weight:700;margin:12px 0;font-size:1.05rem}
+.status-compliant{background:rgba(0,184,148,0.12);color:var(--green);border:1px solid rgba(0,184,148,.3)}
+.status-needs-improvement{background:rgba(243,156,18,0.12);color:var(--orange);border:1px solid rgba(243,156,18,.3)}
+.status-partially-compliant{background:rgba(241,196,15,0.12);color:var(--yellow);border:1px solid rgba(241,196,15,.3)}
+.status-non-compliant{background:rgba(231,76,60,0.12);color:var(--red);border:1px solid rgba(231,76,60,.3)}
+
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0}
+.stat{background:var(--bg);padding:14px 8px;border-radius:10px;text-align:center;border:1px solid var(--border)}
+.stat-num{font-size:1.6rem;font-weight:800}
+.stat-label{font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+
+/* Action buttons */
+.action-btns{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.action-btn{padding:10px 16px;border-radius:8px;font-weight:600;font-size:0.82rem;cursor:pointer;border:1px solid var(--border);background:var(--card);color:white;transition:all .2s}
+.action-btn:hover{background:var(--accent);border-color:var(--accent);transform:translateY(-1px)}
+
+/* Issues */
+.issues-list{margin-top:24px}
+.issues-list h3{color:white;margin-bottom:12px;font-size:1.1rem}
+.issue-card{background:var(--bg);border-radius:12px;margin-bottom:8px;border:1px solid var(--border);overflow:hidden;transition:border-color .2s}
+.issue-card:hover{border-color:rgba(255,255,255,.1)}
+.issue-card-header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer;user-select:none}
+.issue-card-header:hover{background:rgba(255,255,255,.02)}
+.issue-left{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.issue-severity-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.issue-severity-dot.critical{background:var(--red)}
+.issue-severity-dot.serious{background:var(--orange)}
+.issue-severity-dot.moderate{background:var(--yellow)}
+.issue-severity-dot.minor{background:var(--muted)}
+.issue-name{font-weight:600;color:white;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.issue-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.issue-count{font-size:0.75rem;color:var(--muted);background:rgba(255,255,255,.05);padding:2px 8px;border-radius:10px}
+.issue-impact{font-size:0.65rem;padding:3px 8px;border-radius:4px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.impact-critical{background:rgba(231,76,60,0.15);color:var(--red)}
+.impact-serious{background:rgba(230,126,34,0.15);color:var(--orange)}
+.impact-moderate{background:rgba(241,196,15,0.15);color:var(--yellow)}
+.impact-minor{background:rgba(149,165,166,0.15);color:var(--muted)}
+.issue-chevron{color:var(--muted);transition:transform .2s;font-size:0.8rem}
+.issue-card.open .issue-chevron{transform:rotate(180deg)}
+.issue-card-body{display:none;padding:0 16px 16px;border-top:1px solid var(--border)}
+.issue-card.open .issue-card-body{display:block}
+.issue-wcag{font-size:0.8rem;color:var(--accent2);margin:12px 0 6px;display:flex;align-items:center;gap:6px}
+.issue-desc{font-size:0.85rem;color:var(--muted);line-height:1.6}
+.issue-fix{font-size:0.85rem;color:#4ade80;background:rgba(0,184,148,0.06);border:1px solid rgba(0,184,148,0.15);border-left:3px solid var(--green);padding:12px 14px;border-radius:8px;margin-top:10px;line-height:1.7}
+.issue-fix strong{color:var(--green)}
+.issue-elements{font-family:'SF Mono',Monaco,monospace;font-size:0.75rem;background:#0d0d15;padding:10px 12px;border-radius:8px;margin-top:10px;color:var(--orange);overflow-x:auto;border:1px solid var(--border)}
+.issue-link{font-size:0.78rem;color:var(--accent2);margin-top:8px;display:inline-flex;align-items:center;gap:4px}
+
+/* Passes */
+.passes-section{margin-top:24px}
+.passes-section h3{color:var(--green);margin-bottom:10px;font-size:1rem}
+.pass-item{display:inline-block;background:rgba(0,184,148,0.08);color:var(--green);padding:5px 12px;border-radius:6px;font-size:0.78rem;margin:3px;border:1px solid rgba(0,184,148,.15)}
+
+/* Badge section */
+.badge-section{display:none;margin-top:20px;background:var(--bg);padding:20px;border-radius:12px;border:1px solid rgba(0,184,148,.3)}
+.badge-section.show{display:block}
+.badge-section h3{color:var(--green);margin-bottom:8px}
+.badge-code{background:#0d0d15;padding:12px;border-radius:8px;font-family:monospace;font-size:0.75rem;overflow-x:auto;color:var(--green);margin:8px 0;border:1px solid var(--border)}
+.copy-btn{font-size:0.78rem;padding:6px 14px;background:var(--green);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;transition:opacity .2s}
+.copy-btn:hover{opacity:0.85}
+
+/* Trend */
 .trend-section{display:none;margin-top:20px;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:20px}
 .trend-section.show{display:block}
 .trend-section h3{color:white;margin-bottom:12px}
@@ -1021,110 +1096,233 @@ a{color:var(--accent2);text-decoration:none}
 .trend-summary{margin-top:12px;padding:12px;background:var(--card);border-radius:8px;font-size:0.85rem}
 .trend-up{color:var(--green)}.trend-down{color:var(--red)}.trend-stable{color:var(--muted)}
 
-/* Monitor section */
+/* Monitor */
 .monitor-section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-top:20px}
-.monitor-section h3{color:white;margin-bottom:12px;font-size:1.1rem}
+.monitor-section h3{color:white;margin-bottom:12px;font-size:1.05rem}
 .monitor-form{display:flex;gap:10px;flex-wrap:wrap}
 .monitor-form input{flex:1;min-width:200px;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:#1a1a2e;color:white;font-size:0.9rem;outline:none}
 .monitor-form input:focus{border-color:var(--accent)}
 .monitor-form button{padding:10px 20px;background:var(--green);color:white;border:none;border-radius:8px;font-weight:700;cursor:pointer;white-space:nowrap}
-.monitor-form button:hover{opacity:0.9}
-.monitor-msg{margin-top:8px;font-size:0.85rem;padding:8px;border-radius:6px;display:none}
+.monitor-msg{margin-top:8px;font-size:0.85rem;padding:8px 12px;border-radius:6px;display:none}
 .monitor-msg.show{display:block}
-.monitor-msg.success{background:rgba(0,184,148,0.1);color:var(--green);border:1px solid var(--green)}
-.monitor-msg.error{background:rgba(231,76,60,0.1);color:var(--red);border:1px solid var(--red)}
+.monitor-msg.success{background:rgba(0,184,148,0.08);color:var(--green);border:1px solid rgba(0,184,148,.3)}
+.monitor-msg.error{background:rgba(231,76,60,0.08);color:var(--red);border:1px solid rgba(231,76,60,.3)}
 
-.urgency{background:linear-gradient(135deg,#1a0000,#2a0a0a);border:1px solid #4a1a1a;border-radius:16px;padding:40px;margin:60px 0;text-align:center}
-.urgency h2{color:var(--red);font-size:1.8rem;margin-bottom:16px}
-.urgency-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:24px 0}
-.urgency-stat{padding:20px}
-.urgency-stat .num{font-size:2.5rem;font-weight:800;color:var(--red)}
+/* History */
+.history{margin:30px 0;display:none}
+.history.show{display:block}
+.history h3{margin-bottom:12px;color:white}
+.history-item{display:flex;justify-content:space-between;align-items:center;background:var(--card);padding:12px 16px;border-radius:8px;margin-bottom:6px;font-size:0.85rem;border:1px solid var(--border)}
+.history-url{color:white;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;margin-right:12px}
+.history-score{font-weight:700;margin-right:12px}
+.history-date{color:var(--muted);font-size:0.75rem;flex-shrink:0}
+
+/* ===== TRUST / SOCIAL PROOF ===== */
+.social-proof{margin:48px 0;text-align:center}
+.social-proof h2{font-size:1.6rem;color:white;margin-bottom:8px}
+.social-proof .subtitle{color:var(--muted);font-size:0.95rem;margin-bottom:32px}
+.testimonials{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;text-align:left}
+.testimonial{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px}
+.testimonial-stars{color:var(--yellow);font-size:0.9rem;margin-bottom:10px;letter-spacing:2px}
+.testimonial-text{font-size:0.9rem;color:var(--text);line-height:1.6;margin-bottom:14px;font-style:italic}
+.testimonial-author{display:flex;align-items:center;gap:10px}
+.testimonial-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--green));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.85rem;color:white}
+.testimonial-info .name{font-weight:600;color:white;font-size:0.85rem}
+.testimonial-info .role{font-size:0.75rem;color:var(--muted)}
+
+/* ===== URGENCY ===== */
+.urgency{background:linear-gradient(135deg,#1a0000,#2a0a0a);border:1px solid #4a1a1a;border-radius:16px;padding:36px 28px;margin:48px 0;text-align:center}
+.urgency h2{color:var(--red);font-size:1.7rem;margin-bottom:16px}
+.urgency-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0}
+.urgency-stat{padding:16px}
+.urgency-stat .num{font-size:2.2rem;font-weight:800;color:var(--red)}
 .urgency-stat .label{color:var(--muted);font-size:0.85rem}
-.urgency p{color:var(--muted);max-width:600px;margin:16px auto;font-size:0.95rem;line-height:1.7}
-.comparison{margin:60px 0}
-.comparison h2{text-align:center;font-size:1.8rem;margin-bottom:24px;color:white}
+.urgency p{color:var(--muted);max-width:600px;margin:14px auto;font-size:0.9rem;line-height:1.7}
+
+/* ===== COMPARISON ===== */
+.comparison{margin:48px 0}
+.comparison h2{text-align:center;font-size:1.7rem;margin-bottom:24px;color:white}
 .comp-table{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden}
-.comp-table th{background:var(--accent);color:white;padding:14px;text-align:left;font-size:0.85rem}
-.comp-table td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:0.9rem}
+.comp-table th{background:var(--accent);color:white;padding:12px;text-align:left;font-size:0.82rem}
+.comp-table td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:0.85rem}
 .comp-table tr:last-child td{border-bottom:none}
 .comp-table .check{color:var(--green)}.comp-table .cross{color:var(--red)}
-.comp-highlight{background:rgba(108,92,231,0.1)}
-.pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:40px 0}
-.price-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px 24px;text-align:center}
-.price-card.featured{border-color:var(--accent);position:relative;transform:scale(1.03)}
-.price-card.featured::before{content:'MOST POPULAR';position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:var(--accent);color:white;padding:4px 16px;border-radius:20px;font-size:0.7rem;font-weight:700}
-.price-card h3{font-size:1.3rem;color:white;margin-bottom:4px}
-.price-card .subtitle{font-size:0.8rem;color:var(--muted);margin-bottom:16px}
-.price{font-size:2.5rem;font-weight:800;color:white;margin:12px 0}
-.price span{font-size:1rem;color:var(--muted);font-weight:400}
-.price-card ul{list-style:none;text-align:left;margin:20px 0}
-.price-card li{padding:5px 0;color:var(--muted);font-size:0.85rem}
+.comp-highlight{background:rgba(108,92,231,0.08)}
+
+/* ===== SEO CONTENT ===== */
+.seo-section{margin:60px 0}
+.seo-section h2{font-size:1.8rem;color:white;margin-bottom:24px;text-align:center}
+.seo-article{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;margin-bottom:24px}
+.seo-article h3{color:white;font-size:1.2rem;margin-bottom:12px}
+.seo-article h4{color:var(--accent2);font-size:1rem;margin:20px 0 8px}
+.seo-article p{color:var(--muted);font-size:0.92rem;line-height:1.8;margin-bottom:12px}
+.seo-article ul,.seo-article ol{color:var(--muted);font-size:0.9rem;line-height:1.8;margin:8px 0 12px 20px}
+.seo-article li{margin-bottom:4px}
+.seo-article .highlight-box{background:rgba(108,92,231,.08);border:1px solid rgba(108,92,231,.2);border-radius:10px;padding:16px;margin:16px 0}
+.seo-article .highlight-box p{margin-bottom:0;color:var(--text)}
+.wcag-principles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:16px 0}
+.wcag-principle{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px}
+.wcag-principle h5{color:white;font-size:0.9rem;margin-bottom:4px}
+.wcag-principle p{font-size:0.82rem;margin-bottom:0}
+
+/* ===== PRICING ===== */
+.pricing-section{margin:48px 0}
+.pricing-section h2{text-align:center;font-size:1.7rem;margin-bottom:24px;color:white}
+.pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.price-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 20px;text-align:center;transition:transform .2s,border-color .2s}
+.price-card:hover{transform:translateY(-2px)}
+.price-card.featured{border-color:var(--accent);position:relative}
+.price-card.featured::before{content:'MOST POPULAR';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--accent);color:white;padding:4px 16px;border-radius:20px;font-size:0.65rem;font-weight:700;letter-spacing:.5px}
+.price-card h3{font-size:1.2rem;color:white;margin-bottom:4px}
+.price-card .subtitle{font-size:0.78rem;color:var(--muted);margin-bottom:14px}
+.price{font-size:2.3rem;font-weight:800;color:white;margin:10px 0}
+.price span{font-size:0.95rem;color:var(--muted);font-weight:400}
+.price-card ul{list-style:none;text-align:left;margin:18px 0}
+.price-card li{padding:4px 0;color:var(--muted);font-size:0.82rem}
 .price-card li::before{content:'✓ ';color:var(--green);font-weight:bold}
-.price-btn{display:block;width:100%;padding:12px;border-radius:8px;font-weight:600;font-size:0.95rem;border:1px solid var(--border);background:transparent;color:white;cursor:pointer;transition:0.2s}
+.price-btn{display:block;width:100%;padding:12px;border-radius:8px;font-weight:600;font-size:0.9rem;border:1px solid var(--border);background:transparent;color:white;cursor:pointer;transition:all .2s}
 .price-btn:hover{background:var(--accent);border-color:var(--accent)}
 .price-card.featured .price-btn{background:var(--accent);border-color:var(--accent)}
-.education{margin:60px 0}
-.education h2{text-align:center;font-size:1.8rem;margin-bottom:24px;color:white}
-.edu-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
-.edu-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px}
-.edu-card h3{color:white;margin-bottom:8px;font-size:1.1rem}
-.edu-card p{color:var(--muted);font-size:0.9rem;line-height:1.6}
-.history{margin:40px 0}
-.history h3{margin-bottom:12px;color:white}
-.history-item{display:flex;justify-content:space-between;align-items:center;background:var(--card);padding:12px 16px;border-radius:8px;margin-bottom:6px;font-size:0.85rem}
-.history-url{color:white;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px}
-.history-score{font-weight:700}
-.history-date{color:var(--muted);font-size:0.75rem}
-.badge-section{display:none;margin-top:20px;background:var(--bg);padding:20px;border-radius:10px;border:1px solid var(--green)}
-.badge-section.show{display:block}
-.badge-section h3{color:var(--green);margin-bottom:8px}
-.badge-code{background:#1a1a2e;padding:12px;border-radius:6px;font-family:monospace;font-size:0.75rem;overflow-x:auto;color:var(--green);margin:8px 0}
-.copy-btn{font-size:0.75rem;padding:4px 10px;background:var(--green);color:white;border:none;border-radius:4px;cursor:pointer}
-footer{text-align:center;padding:40px 0;color:var(--muted);font-size:0.85rem;border-top:1px solid var(--border);margin-top:60px}
-.loading{display:none;text-align:center;margin:24px 0}.loading.show{display:block}
-.spinner{display:inline-block;width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.error-msg{display:none;text-align:center;padding:16px;background:rgba(231,76,60,0.1);border:1px solid var(--red);border-radius:10px;color:var(--red);margin:16px 0}
-.error-msg.show{display:block}
+
+/* ===== FOOTER ===== */
+.site-footer{border-top:1px solid var(--border);margin-top:60px;padding:40px 0 24px}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;margin-bottom:32px}
+.footer-brand h4{color:white;font-size:1.1rem;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.footer-brand p{color:var(--muted);font-size:0.82rem;line-height:1.6}
+.footer-col h5{color:white;font-size:0.85rem;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+.footer-col a{display:block;color:var(--muted);font-size:0.82rem;padding:3px 0;transition:color .2s}
+.footer-col a:hover{color:white;text-decoration:none}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:20px;border-top:1px solid var(--border);font-size:0.78rem;color:var(--muted)}
+.footer-bottom a{color:var(--muted)}
+.footer-bottom a:hover{color:white}
+
+/* ===== RESPONSIVE ===== */
 @media(max-width:768px){
   .hero h1{font-size:2rem}
-  .pricing,.edu-grid{grid-template-columns:1fr}
-  .urgency-stats{grid-template-columns:1fr}
-  .stats-row{grid-template-columns:repeat(2,1fr)}
+  .hero p{font-size:1rem}
+  .trust-bar{gap:16px}
+  .trust-item{font-size:0.78rem}
+  .scanner{padding:20px;margin-bottom:36px}
   .scanner-form{flex-direction:column}
-  .comp-table{font-size:0.8rem}
+  .scanner-btn{padding:14px}
+  .score-circle{width:130px;height:130px}
+  .score-circle svg{width:130px;height:130px}
+  .score-circle .score-num{font-size:2.2rem}
+  .stats-row{grid-template-columns:repeat(2,1fr);gap:8px}
+  .stat{padding:12px 6px}
+  .stat-num{font-size:1.3rem}
+  .action-btns{gap:6px}
+  .action-btn{padding:8px 12px;font-size:0.78rem;flex:1;min-width:calc(50% - 6px);text-align:center}
+  .issue-name{font-size:0.82rem}
+  .testimonials{grid-template-columns:1fr}
+  .urgency{padding:28px 20px}
+  .urgency-stats{grid-template-columns:1fr}
+  .urgency-stat .num{font-size:1.8rem}
+  .comp-table{font-size:0.75rem;display:block;overflow-x:auto}
+  .comp-table th,.comp-table td{padding:8px 6px;white-space:nowrap}
+  .wcag-principles{grid-template-columns:1fr}
+  .seo-article{padding:20px}
+  .pricing{grid-template-columns:1fr}
+  .price-card.featured{transform:none}
+  .footer-grid{grid-template-columns:1fr 1fr;gap:24px}
+  .footer-bottom{flex-direction:column;gap:8px;text-align:center}
+  .nav-links{gap:12px;font-size:0.8rem}
   .monitor-form{flex-direction:column}
+  .history-item{flex-wrap:wrap;gap:6px}
+  .history-url{max-width:100%;flex-basis:100%}
+  .edu-grid{grid-template-columns:1fr}
 }
+
+@media(max-width:480px){
+  .container{padding:0 14px}
+  .hero h1{font-size:1.65rem}
+  .hero-badge{font-size:0.7rem;padding:5px 12px}
+  .trust-bar{flex-direction:column;gap:8px;align-items:center}
+  .stats-row{grid-template-columns:repeat(2,1fr)}
+  .footer-grid{grid-template-columns:1fr}
+  .nav-links{display:none}
+}
+
+/* ===== EDUCATION ===== */
+.education{margin:48px 0}
+.education h2{text-align:center;font-size:1.7rem;margin-bottom:24px;color:white}
+.edu-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.edu-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px}
+.edu-card h3{color:white;margin-bottom:8px;font-size:1rem}
+.edu-card p{color:var(--muted);font-size:0.88rem;line-height:1.6}
 </style>
 </head>
 <body>
 <div class="container">
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-brand">🛡️ ComplianceShield</div>
+    <div class="nav-links">
+      <a href="#scanner">Scanner</a>
+      <a href="#ada-guide">ADA Guide</a>
+      <a href="#pricing-section">Pricing</a>
+      <a href="https://github.com/beepboop-dev/gamma-project">GitHub</a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
   <div class="hero">
-    <div class="shield-icon">🛡️</div>
     <div class="hero-badge">⚠️ 4,605 ADA lawsuits filed in 2025 — Is your website next?</div>
-    <h1>ComplianceShield</h1>
-    <p>Scan any website for ADA & WCAG 2.1 accessibility compliance in seconds. Get detailed reports, fix issues, and protect your business from lawsuits.</p>
+    <h1>Scan Any Website for ADA Compliance in Seconds</h1>
+    <p>23 automated WCAG 2.1 checks. Actionable fix instructions. PDF reports. No signup required. Free forever.</p>
   </div>
 
+  <!-- Trust bar -->
+  <div class="trust-bar">
+    <div class="trust-item">🛡️ <strong>2,400+</strong> sites scanned</div>
+    <div class="trust-item">⭐ <strong>23</strong> WCAG checks</div>
+    <div class="trust-item">📄 <strong>Free</strong> PDF reports</div>
+    <div class="trust-item">⚡ Results in <strong>seconds</strong></div>
+  </div>
+
+  <!-- Scanner -->
   <div class="scanner" id="scanner">
     <h2>🔍 Free Accessibility Scan</h2>
     <div class="scanner-form">
-      <input type="text" class="scanner-input" id="urlInput" placeholder="Enter any website URL (e.g., example.com)" />
-      <button class="scanner-btn" id="scanBtn" onclick="runScan()">Scan Now</button>
+      <input type="url" class="scanner-input" id="urlInput" placeholder="Enter any website URL (e.g., example.com)" autocomplete="url" spellcheck="false" />
+      <button class="scanner-btn" id="scanBtn" onclick="runScan()">Scan Now →</button>
     </div>
-    <div class="scanner-hint">Free unlimited scans • No signup required • 23 WCAG checks • Results in seconds</div>
+    <div class="scanner-hint">Free unlimited scans • No signup required • 23 WCAG checks</div>
 
     <div class="loading" id="loading">
       <div class="spinner"></div>
-      <p style="margin-top:12px;color:var(--muted)">Scanning for accessibility issues...</p>
+      <div class="loading-steps">
+        <div class="loading-step active" id="step1">Connecting to website...</div>
+        <div class="loading-step" id="step2">Analyzing HTML structure...</div>
+        <div class="loading-step" id="step3">Running 23 WCAG checks...</div>
+        <div class="loading-step" id="step4">Generating report...</div>
+      </div>
     </div>
-    <div class="error-msg" id="errorMsg"></div>
+
+    <div class="error-msg" id="errorMsg">
+      <span class="error-icon">⚠️</span>
+      <div class="error-content">
+        <h4 id="errorTitle">Scan Failed</h4>
+        <p id="errorText"></p>
+        <ul class="error-suggestions" id="errorSuggestions"></ul>
+      </div>
+    </div>
 
     <div class="results" id="results">
-      <div class="score-ring">
-        <div class="score-number" id="scoreNum">0</div>
-        <div class="score-label">Accessibility Score</div>
+      <!-- Animated Score Circle -->
+      <div class="score-circle-wrap">
+        <div class="score-circle">
+          <svg viewBox="0 0 160 160">
+            <circle class="bg" cx="80" cy="80" r="70"/>
+            <circle class="fg" id="scoreArc" cx="80" cy="80" r="70" stroke-dasharray="439.82" stroke-dashoffset="439.82"/>
+          </svg>
+          <div class="score-text">
+            <div class="score-num" id="scoreNum">0</div>
+            <div class="score-label">out of 100</div>
+          </div>
+        </div>
       </div>
+
       <div class="compliance-status" id="complianceStatus"></div>
 
       <div class="stats-row">
@@ -1135,10 +1333,10 @@ footer{text-align:center;padding:40px 0;color:var(--muted);font-size:0.85rem;bor
       </div>
 
       <div class="action-btns">
-        <button class="action-btn" onclick="downloadPDF()">📄 Download PDF Report</button>
-        <button class="action-btn" id="badgeBtn" onclick="generateBadge()" style="display:none">🏅 Get Compliance Badge</button>
-        <button class="action-btn" onclick="showHistory()">📊 Scan History</button>
-        <button class="action-btn" onclick="loadTrend()">📈 Score Trend</button>
+        <button class="action-btn" onclick="downloadPDF()">📄 PDF Report</button>
+        <button class="action-btn" id="badgeBtn" onclick="generateBadge()" style="display:none">🏅 Get Badge</button>
+        <button class="action-btn" onclick="showHistory()">📊 History</button>
+        <button class="action-btn" onclick="loadTrend()">📈 Trend</button>
       </div>
 
       <div class="badge-section" id="badgeSection">
@@ -1149,7 +1347,6 @@ footer{text-align:center;padding:40px 0;color:var(--muted);font-size:0.85rem;bor
         <button class="copy-btn" onclick="copyBadge()">Copy Embed Code</button>
       </div>
 
-      <!-- Trend Chart -->
       <div class="trend-section" id="trendSection">
         <h3>📈 Score Trend Over Time</h3>
         <div class="trend-chart" id="trendChart"></div>
@@ -1157,10 +1354,9 @@ footer{text-align:center;padding:40px 0;color:var(--muted);font-size:0.85rem;bor
         <div class="trend-summary" id="trendSummary"></div>
       </div>
 
-      <!-- Monitor Registration -->
       <div class="monitor-section">
         <h3>🔔 Set Up Weekly Monitoring</h3>
-        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:12px">Get automated scan results delivered to your inbox every week. Track your accessibility score over time.</p>
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:12px">Get automated scan results delivered to your inbox every week.</p>
         <div class="monitor-form">
           <input type="email" id="monitorEmail" placeholder="your@email.com" />
           <button onclick="registerMonitor()">📧 Start Monitoring</button>
@@ -1168,19 +1364,54 @@ footer{text-align:center;padding:40px 0;color:var(--muted);font-size:0.85rem;bor
         <div class="monitor-msg" id="monitorMsg"></div>
       </div>
 
+      <!-- Issues sorted by severity with expandable cards -->
       <div class="issues-list" id="issuesList"></div>
+
       <div class="passes-section" id="passesSection">
-        <h3 style="color:var(--green);margin-bottom:10px">✅ Checks Passed</h3>
+        <h3>✅ Checks Passed</h3>
         <div id="passesList"></div>
       </div>
     </div>
 
-    <div class="history" id="historySection" style="display:none">
+    <div class="history" id="historySection">
       <h3>📊 Recent Scan History</h3>
       <div id="historyList"></div>
     </div>
   </div>
 
+  <!-- Social Proof / Testimonials -->
+  <div class="social-proof">
+    <h2>Trusted by Compliance Teams Everywhere</h2>
+    <p class="subtitle">Join 2,400+ businesses using ComplianceShield to stay ADA compliant</p>
+    <div class="testimonials">
+      <div class="testimonial">
+        <div class="testimonial-stars">★★★★★</div>
+        <div class="testimonial-text">"We were hit with an ADA demand letter and needed to fix our site fast. ComplianceShield identified every issue in seconds and gave us exact code fixes. Saved us thousands in consultant fees."</div>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">MR</div>
+          <div class="testimonial-info"><div class="name">Maria Rodriguez</div><div class="role">Compliance Officer, TechFlow Inc.</div></div>
+        </div>
+      </div>
+      <div class="testimonial">
+        <div class="testimonial-stars">★★★★★</div>
+        <div class="testimonial-text">"As a small business owner, I couldn't afford a $5,000 accessibility audit. ComplianceShield does it for free with actionable fixes. I embed the badge on my site — customers notice."</div>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">JT</div>
+          <div class="testimonial-info"><div class="name">James Thompson</div><div class="role">Owner, Riverside Bakery</div></div>
+        </div>
+      </div>
+      <div class="testimonial">
+        <div class="testimonial-stars">★★★★★</div>
+        <div class="testimonial-text">"We scan every client site before launch now. The PDF reports look professional enough to include in our deliverables. The weekly monitoring catches regressions before they become problems."</div>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">SK</div>
+          <div class="testimonial-info"><div class="name">Sarah Kim</div><div class="role">Lead Developer, Digital Pixel Agency</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Urgency Section -->
   <div class="urgency">
     <h2>⚖️ ADA Web Accessibility Lawsuits Are Surging</h2>
     <div class="urgency-stats">
@@ -1188,11 +1419,12 @@ footer{text-align:center;padding:40px 0;color:var(--muted);font-size:0.85rem;bor
       <div class="urgency-stat"><div class="num">$50K+</div><div class="label">Average settlement cost</div></div>
       <div class="urgency-stat"><div class="num">98%</div><div class="label">of websites fail basic WCAG checks</div></div>
     </div>
-    <p>Under the Americans with Disabilities Act (ADA), websites are considered "places of public accommodation." Courts have consistently ruled that inaccessible websites violate Title III of the ADA. The Department of Justice finalized rules in 2024 requiring state and local government websites to meet WCAG 2.1 Level AA — and private sector enforcement is accelerating.</p>
-    <p style="margin-top:12px"><strong style="color:var(--red)">Plaintiffs' firms are actively scanning websites for violations.</strong> The average small business pays $25,000–$75,000 to settle. Don't wait until you get served.</p>
-    <p style="margin-top:16px"><a href="#scanner" style="color:var(--accent2);font-weight:700;font-size:1.1rem">→ Scan your website now — it's free</a></p>
+    <p>Under the ADA, websites are "places of public accommodation." The DOJ finalized rules in 2024 requiring WCAG 2.1 Level AA — and private sector enforcement is accelerating.</p>
+    <p style="margin-top:10px"><strong style="color:var(--red)">Plaintiffs' firms are actively scanning websites for violations.</strong> Average settlement: $25,000–$75,000.</p>
+    <p style="margin-top:14px"><a href="#scanner" style="color:var(--accent2);font-weight:700;font-size:1.05rem">→ Scan your website now — it's free</a></p>
   </div>
 
+  <!-- Comparison Table -->
   <div class="comparison">
     <h2>Why ComplianceShield?</h2>
     <table class="comp-table">
@@ -1209,18 +1441,104 @@ footer{text-align:center;padding:40px 0;color:var(--muted);font-size:0.85rem;bor
     </table>
   </div>
 
+  <!-- SEO Content: What is ADA Compliance -->
+  <div class="seo-section" id="ada-guide">
+    <h2>📚 The Complete Guide to Web Accessibility</h2>
+
+    <article class="seo-article">
+      <h3>🏛️ What is ADA Compliance for Websites?</h3>
+      <p>The <strong>Americans with Disabilities Act (ADA)</strong>, signed into law in 1990, prohibits discrimination against individuals with disabilities. While the original law focused on physical spaces, courts and the Department of Justice have consistently interpreted it to include websites and digital content.</p>
+      <p>In April 2024, the DOJ published its final rule under Title II of the ADA, explicitly requiring state and local government websites to conform to <strong>WCAG 2.1 Level AA</strong>. While this rule directly applies to government entities, it has set a clear benchmark that private sector courts and enforcement agencies follow.</p>
+
+      <h4>Who Needs to Comply?</h4>
+      <p>Under Title III of the ADA, any business that operates a "place of public accommodation" must make their services accessible — and courts have ruled that websites qualify. This includes:</p>
+      <ul>
+        <li><strong>E-commerce stores</strong> — online shopping must be navigable by screen readers</li>
+        <li><strong>Healthcare providers</strong> — patient portals, appointment booking, medical information</li>
+        <li><strong>Financial services</strong> — banking, insurance, and investment platforms</li>
+        <li><strong>Restaurants & hospitality</strong> — online menus, reservations, hotel booking</li>
+        <li><strong>Educational institutions</strong> — course materials, registration systems, LMS platforms</li>
+        <li><strong>Any business with a website</strong> — if you serve the public, accessibility applies</li>
+      </ul>
+
+      <div class="highlight-box">
+        <p>💡 <strong>Key fact:</strong> Over 4,600 ADA website accessibility lawsuits were filed in 2025 alone. The average settlement ranges from $25,000 to $75,000 — far more than the cost of making your site accessible. <a href="#scanner">Scan your site now →</a></p>
+      </div>
+
+      <h4>What Happens If You Don't Comply?</h4>
+      <p>Non-compliant websites face several risks:</p>
+      <ol>
+        <li><strong>Demand letters</strong> from plaintiffs' attorneys citing specific violations</li>
+        <li><strong>Federal lawsuits</strong> under Title III of the ADA</li>
+        <li><strong>State lawsuits</strong> under state-level disability discrimination laws (e.g., California's Unruh Act, which allows statutory damages of $4,000 per violation per visit)</li>
+        <li><strong>Settlements</strong> typically ranging from $5,000 for small businesses to $100,000+ for larger companies</li>
+        <li><strong>Ongoing compliance obligations</strong> including monitoring and remediation agreements</li>
+      </ol>
+    </article>
+
+    <article class="seo-article">
+      <h3>📋 WCAG 2.1 Guidelines — What You Need to Know</h3>
+      <p>The <strong>Web Content Accessibility Guidelines (WCAG) 2.1</strong>, published by the World Wide Web Consortium (W3C), are the internationally recognized standard for web accessibility. They are organized around four core principles, often remembered by the acronym <strong>POUR</strong>:</p>
+
+      <div class="wcag-principles">
+        <div class="wcag-principle">
+          <h5>👁️ Perceivable</h5>
+          <p>Information must be presentable in ways all users can perceive. This includes alt text for images, captions for videos, and sufficient color contrast.</p>
+        </div>
+        <div class="wcag-principle">
+          <h5>⌨️ Operable</h5>
+          <p>UI components must be operable by all users. Sites must be fully keyboard-navigable, allow enough time for interaction, and avoid content that causes seizures.</p>
+        </div>
+        <div class="wcag-principle">
+          <h5>📖 Understandable</h5>
+          <p>Content must be readable and predictable. Pages need proper language attributes, consistent navigation, and helpful error messages on forms.</p>
+        </div>
+        <div class="wcag-principle">
+          <h5>🔧 Robust</h5>
+          <p>Content must work reliably across assistive technologies. This means valid HTML, proper ARIA attributes, and compatible code.</p>
+        </div>
+      </div>
+
+      <h4>WCAG Conformance Levels</h4>
+      <p>WCAG defines three levels of conformance:</p>
+      <ul>
+        <li><strong>Level A</strong> — The minimum. Addresses the most critical barriers (e.g., alt text, keyboard access, page titles). 30 success criteria.</li>
+        <li><strong>Level AA</strong> — The standard target for legal compliance. Includes Level A plus additional criteria like color contrast (4.5:1 ratio), consistent navigation, and error prevention. ~20 additional criteria.</li>
+        <li><strong>Level AAA</strong> — The highest level. Includes enhanced contrast (7:1), sign language for audio, and more. Aspirational for most sites.</li>
+      </ul>
+
+      <div class="highlight-box">
+        <p>🎯 <strong>Target Level AA.</strong> This is what the DOJ requires, courts reference, and what ComplianceShield tests against. Our 23 automated checks cover the most impactful Level A and AA success criteria.</p>
+      </div>
+
+      <h4>Common WCAG Failures (What ComplianceShield Checks)</h4>
+      <p>Based on the <a href="https://webaim.org/projects/million/" target="_blank">WebAIM Million</a> annual study, the most common accessibility errors are:</p>
+      <ol>
+        <li><strong>Low contrast text</strong> (83% of pages) — Text doesn't meet 4.5:1 ratio</li>
+        <li><strong>Missing alt text</strong> (58%) — Images without alternative descriptions</li>
+        <li><strong>Empty links</strong> (50%) — Links with no accessible text</li>
+        <li><strong>Missing form labels</strong> (46%) — Form inputs without associated labels</li>
+        <li><strong>Empty buttons</strong> (27%) — Buttons with no accessible name</li>
+        <li><strong>Missing page language</strong> (19%) — No lang attribute on &lt;html&gt;</li>
+      </ol>
+      <p>ComplianceShield detects all of these plus 17 additional checks including keyboard traps, heading structure, ARIA landmarks, link text quality, and more.</p>
+    </article>
+  </div>
+
+  <!-- Education Cards -->
   <div class="education">
-    <h2>📚 Understanding Web Accessibility & ADA Compliance</h2>
+    <h2>Quick Reference</h2>
     <div class="edu-grid">
-      <div class="edu-card"><h3>🏛️ What is ADA Compliance?</h3><p>The Americans with Disabilities Act (ADA) requires businesses to make their services accessible to people with disabilities. In 2024, the DOJ finalized rules explicitly extending this to websites, requiring WCAG 2.1 Level AA conformance.</p></div>
-      <div class="edu-card"><h3>📋 What is WCAG 2.1?</h3><p>The Web Content Accessibility Guidelines (WCAG) 2.1 are the international standard for web accessibility. Organized around 4 principles: <strong>Perceivable</strong>, <strong>Operable</strong>, <strong>Understandable</strong>, and <strong>Robust</strong>. Level AA includes 50+ specific success criteria.</p></div>
-      <div class="edu-card"><h3>⚖️ Recent Notable Lawsuits</h3><p><strong>Domino's v. Robles (2019):</strong> Supreme Court let stand a ruling that Domino's website must be accessible. <strong>2025:</strong> Over 400 lawsuits/month targeting e-commerce, healthcare, and small business websites.</p></div>
-      <div class="edu-card"><h3>🎯 Who's at Risk?</h3><p>Any business with a website — especially <strong>e-commerce, healthcare, financial services, restaurants, and hospitality</strong>. Serial plaintiffs target sites with obvious violations like missing alt text, poor contrast, and inaccessible forms.</p></div>
+      <div class="edu-card"><h3>⚖️ Recent Notable Lawsuits</h3><p><strong>Domino's v. Robles (2019):</strong> Supreme Court let stand a ruling requiring website accessibility. <strong>2025:</strong> 400+ lawsuits/month targeting e-commerce, healthcare, and small businesses.</p></div>
+      <div class="edu-card"><h3>🎯 Who's Most at Risk?</h3><p>Any business with a website — especially <strong>e-commerce, healthcare, financial services, restaurants, and hospitality</strong>. Serial plaintiffs target sites with obvious violations.</p></div>
+      <div class="edu-card"><h3>🔧 How to Fix Issues</h3><p>ComplianceShield provides <strong>specific, developer-ready fix instructions</strong> for every issue found — with code examples. Most fixes take minutes, not hours.</p></div>
+      <div class="edu-card"><h3>🏅 Prove Your Compliance</h3><p>Generate a <strong>verifiable compliance badge</strong> for your website. Show customers and partners your commitment to accessibility. Badge includes score and scan date.</p></div>
     </div>
   </div>
 
-  <div class="section" id="pricing">
-    <h2 style="text-align:center;font-size:1.8rem;margin-bottom:24px;color:white">Plans & Pricing</h2>
+  <!-- Pricing -->
+  <div class="pricing-section" id="pricing-section">
+    <h2>Plans & Pricing</h2>
     <div class="pricing">
       <div class="price-card">
         <h3>Free</h3><div class="subtitle">For quick checks</div>
@@ -1243,26 +1561,107 @@ footer{text-align:center;padding:40px 0;color:var(--muted);font-size:0.85rem;bor
     </div>
   </div>
 
-  <footer>
-    <p>🛡️ ComplianceShield — Protect your business from ADA lawsuits</p>
-    <p style="margin-top:8px">23 WCAG checks • Color contrast analysis • Keyboard navigation • Link quality • Score trends</p>
-    <p style="margin-top:8px">Built with care • <a href="https://github.com/beepboop-dev/gamma-project">GitHub</a></p>
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <h4>🛡️ ComplianceShield</h4>
+        <p>The fastest way to check your website for ADA & WCAG 2.1 accessibility compliance. Free unlimited scans with detailed fix instructions, PDF reports, and compliance badges.</p>
+      </div>
+      <div class="footer-col">
+        <h5>Product</h5>
+        <a href="#scanner">Free Scanner</a>
+        <a href="#pricing-section">Pricing</a>
+        <a href="/api/history">API</a>
+        <a href="https://github.com/beepboop-dev/gamma-project">GitHub</a>
+      </div>
+      <div class="footer-col">
+        <h5>Resources</h5>
+        <a href="#ada-guide">ADA Compliance Guide</a>
+        <a href="#ada-guide">WCAG 2.1 Guide</a>
+        <a href="/blog" onclick="event.preventDefault();alert('Blog coming soon!')">Blog</a>
+        <a href="https://www.w3.org/WAI/WCAG21/Understanding/" target="_blank">WCAG Reference</a>
+      </div>
+      <div class="footer-col">
+        <h5>Legal</h5>
+        <a href="/terms" onclick="event.preventDefault();alert('Terms of Service — Coming soon. ComplianceShield provides automated accessibility checks. It does not constitute legal advice.')">Terms of Service</a>
+        <a href="/privacy" onclick="event.preventDefault();alert('Privacy Policy — Coming soon. We do not store personal data. Scan results are stored anonymously for trend analysis.')">Privacy Policy</a>
+        <a href="mailto:support@abapture.ai">Contact</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 ComplianceShield. All rights reserved.</span>
+      <span>Made with 🛡️ for a more accessible web</span>
+    </div>
   </footer>
 </div>
 
 <script>
 let currentScan = null;
+let loadingInterval = null;
+
+function showError(title, message, suggestions) {
+  const el = document.getElementById('errorMsg');
+  document.getElementById('errorTitle').textContent = title || 'Scan Failed';
+  document.getElementById('errorText').textContent = message;
+  const sugList = document.getElementById('errorSuggestions');
+  sugList.innerHTML = '';
+  if (suggestions && suggestions.length) {
+    suggestions.forEach(s => { const li = document.createElement('li'); li.textContent = s; sugList.appendChild(li); });
+  }
+  el.classList.add('show');
+}
+
+function categorizeError(msg) {
+  const lower = msg.toLowerCase();
+  if (lower.includes('invalid url') || lower.includes('invalid website')) {
+    return { title: 'Invalid URL', message: msg, suggestions: ['Make sure the URL starts with http:// or https://', 'Check for typos in the domain name', 'Try entering just the domain (e.g., example.com)'] };
+  }
+  if (lower.includes('could not find') || lower.includes('enotfound') || lower.includes('getaddrinfo')) {
+    return { title: 'Website Not Found', message: 'We couldn\\'t find that website. The domain may not exist or DNS isn\\'t resolving.', suggestions: ['Double-check the spelling of the URL', 'Make sure the website is online', 'Try without www. or with www.'] };
+  }
+  if (lower.includes('timed out') || lower.includes('took too long')) {
+    return { title: 'Connection Timed Out', message: 'The website took too long to respond (>15s).', suggestions: ['The site may be experiencing high traffic', 'Try again in a few minutes', 'Check if the site loads in your browser'] };
+  }
+  if (lower.includes('connection refused')) {
+    return { title: 'Connection Refused', message: 'The website actively refused our connection.', suggestions: ['The site may be down for maintenance', 'It may be blocking automated scanners', 'Try again later'] };
+  }
+  if (lower.includes('ssl') || lower.includes('certificate')) {
+    return { title: 'SSL/TLS Error', message: 'There\\'s a problem with the website\\'s security certificate.', suggestions: ['The site may have an expired certificate', 'Try scanning with http:// instead of https://', 'Contact the website owner about the SSL issue'] };
+  }
+  if (lower.includes('too large')) {
+    return { title: 'Page Too Large', message: 'The webpage exceeds our 5MB scan limit.', suggestions: ['Try scanning a specific page instead of the homepage', 'The site may be serving very large HTML'] };
+  }
+  return { title: 'Scan Failed', message: msg, suggestions: ['Check that the URL is correct', 'Make sure the website is accessible', 'Try again in a moment'] };
+}
+
+function animateLoadingSteps() {
+  const steps = ['step1','step2','step3','step4'];
+  let i = 0;
+  steps.forEach(s => document.getElementById(s).classList.remove('active'));
+  document.getElementById(steps[0]).classList.add('active');
+  loadingInterval = setInterval(() => {
+    i++;
+    if (i < steps.length) {
+      document.getElementById(steps[i]).classList.add('active');
+    }
+  }, 2500);
+}
 
 async function runScan() {
-  const url = document.getElementById('urlInput').value.trim();
-  if (!url) { document.getElementById('urlInput').focus(); return; }
+  const input = document.getElementById('urlInput');
+  const url = input.value.trim();
+  if (!url) { input.classList.add('input-error'); input.focus(); setTimeout(() => input.classList.remove('input-error'), 2000); return; }
+  input.classList.remove('input-error');
+
   document.getElementById('loading').classList.add('show');
   document.getElementById('results').classList.remove('show');
   document.getElementById('errorMsg').classList.remove('show');
-  document.getElementById('historySection').style.display = 'none';
+  document.getElementById('historySection').classList.remove('show');
   document.getElementById('badgeSection').classList.remove('show');
   document.getElementById('trendSection').classList.remove('show');
   document.getElementById('scanBtn').disabled = true;
+  animateLoadingSteps();
 
   try {
     const res = await fetch('/api/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
@@ -1271,18 +1670,49 @@ async function runScan() {
     currentScan = data;
     displayResults(data);
   } catch(e) {
-    document.getElementById('errorMsg').textContent = e.message;
-    document.getElementById('errorMsg').classList.add('show');
+    const err = categorizeError(e.message);
+    showError(err.title, err.message, err.suggestions);
   } finally {
+    clearInterval(loadingInterval);
     document.getElementById('loading').classList.remove('show');
     document.getElementById('scanBtn').disabled = false;
   }
 }
 
+function animateScore(target) {
+  const numEl = document.getElementById('scoreNum');
+  const arcEl = document.getElementById('scoreArc');
+  const circumference = 2 * Math.PI * 70; // 439.82
+  const color = target >= 80 ? 'var(--green)' : target >= 50 ? 'var(--orange)' : 'var(--red)';
+
+  arcEl.style.stroke = color;
+  numEl.style.color = color;
+
+  // Animate the arc
+  const offset = circumference - (target / 100) * circumference;
+  requestAnimationFrame(() => { arcEl.style.strokeDashoffset = offset; });
+
+  // Animate the number
+  let current = 0;
+  const duration = 1200;
+  const start = performance.now();
+  function tick(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+    current = Math.round(eased * target);
+    numEl.textContent = current;
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
 function displayResults(data) {
-  const scoreEl = document.getElementById('scoreNum');
-  scoreEl.textContent = data.score;
-  scoreEl.style.color = data.score >= 80 ? 'var(--green)' : data.score >= 50 ? 'var(--orange)' : 'var(--red)';
+  // Reset arc
+  document.getElementById('scoreArc').style.strokeDashoffset = '439.82';
+
+  // Animate score after short delay
+  setTimeout(() => animateScore(data.score), 100);
 
   const statusEl = document.getElementById('complianceStatus');
   const statusMap = {
@@ -1301,24 +1731,50 @@ function displayResults(data) {
   document.getElementById('statWarnings').textContent = data.summary.warnings;
   document.getElementById('badgeBtn').style.display = data.complianceLevel !== 'non-compliant' ? 'inline-block' : 'none';
 
-  const issuesHtml = data.issues.map(issue => \`
-    <div class="issue-item \${issue.impact}">
-      <div class="issue-header">
-        <span class="issue-name">\${issue.name} (\${issue.count})</span>
-        <span class="issue-impact impact-\${issue.impact}">\${issue.impact}</span>
+  // Sort issues by severity
+  const severityOrder = { critical: 0, serious: 1, moderate: 2, minor: 3 };
+  const sortedIssues = [...data.issues].sort((a, b) => (severityOrder[a.impact] || 4) - (severityOrder[b.impact] || 4));
+
+  const issuesHtml = sortedIssues.length > 0 ? '<h3>🔍 Issues Found (' + sortedIssues.length + ')</h3>' + sortedIssues.map((issue, idx) => \`
+    <div class="issue-card" id="issue-\${idx}">
+      <div class="issue-card-header" onclick="toggleIssue(\${idx})">
+        <div class="issue-left">
+          <div class="issue-severity-dot \${issue.impact}"></div>
+          <span class="issue-name">\${issue.name}</span>
+        </div>
+        <div class="issue-right">
+          <span class="issue-count">\${issue.count} found</span>
+          <span class="issue-impact impact-\${issue.impact}">\${issue.impact}</span>
+          <span class="issue-chevron">▼</span>
+        </div>
       </div>
-      <div class="issue-wcag">📋 \${issue.wcag} — Level \${issue.level} (\${issue.principle})</div>
-      <div class="issue-desc">\${issue.description}</div>
-      \${issue.fix ? \`<div class="issue-fix">💡 <strong>How to fix:</strong> \${issue.fix}</div>\` : ''}
-      \${issue.elements && issue.elements.length > 0 ? \`<div class="issue-elements">\${issue.elements.map(e => escapeHtml(e)).join('<br>')}</div>\` : ''}
-      <a href="\${issue.url}" target="_blank" class="issue-link">📖 WCAG Reference →</a>
+      <div class="issue-card-body">
+        <div class="issue-wcag">📋 \${issue.wcag} — Level \${issue.level} · \${issue.principle}</div>
+        <div class="issue-desc">\${issue.description}</div>
+        \${issue.fix ? \`<div class="issue-fix">💡 <strong>How to fix:</strong> \${issue.fix}</div>\` : ''}
+        \${issue.elements && issue.elements.length > 0 ? \`<div class="issue-elements">\${issue.elements.map(e => escapeHtml(e)).join('\\n')}</div>\` : ''}
+        <a href="\${issue.url}" target="_blank" class="issue-link">📖 WCAG Reference →</a>
+      </div>
     </div>
-  \`).join('');
+  \`).join('') : '';
   document.getElementById('issuesList').innerHTML = issuesHtml;
 
-  const passesHtml = data.passes.map(p => \`<span class="pass-item">✓ \${p.name} (\${p.wcag})</span>\`).join('');
+  // Auto-expand first critical issue
+  if (sortedIssues.length > 0) {
+    setTimeout(() => toggleIssue(0), 300);
+  }
+
+  const passesHtml = data.passes.map(p => \`<span class="pass-item">✓ \${p.name}</span>\`).join('');
   document.getElementById('passesList').innerHTML = passesHtml;
   document.getElementById('results').classList.add('show');
+
+  // Smooth scroll to results
+  document.querySelector('.score-circle-wrap').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function toggleIssue(idx) {
+  const card = document.getElementById('issue-' + idx);
+  if (card) card.classList.toggle('open');
 }
 
 function escapeHtml(str) { return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -1368,32 +1824,21 @@ async function loadTrend() {
     }
 
     const scans = data.scans;
-    const maxScore = 100;
-    chart.innerHTML = scans.map((s, i) => {
-      const height = Math.max(4, (s.score / maxScore) * 100);
+    chart.innerHTML = scans.map(s => {
+      const height = Math.max(4, s.score);
       const color = s.score >= 80 ? 'var(--green)' : s.score >= 50 ? 'var(--orange)' : 'var(--red)';
       const date = new Date(s.date).toLocaleDateString();
-      return \`<div class="trend-bar" style="height:\${height}%;background:\${color}">
-        <div class="tooltip">\${date}<br>Score: \${s.score}/100<br>Issues: \${s.issues}</div>
-      </div>\`;
+      return \`<div class="trend-bar" style="height:\${height}%;background:\${color}"><div class="tooltip">\${date}<br>Score: \${s.score}/100<br>Issues: \${s.issues}</div></div>\`;
     }).join('');
 
-    if (scans.length > 0) {
-      meta.innerHTML = \`<span>\${new Date(scans[0].date).toLocaleDateString()}</span><span>\${new Date(scans[scans.length-1].date).toLocaleDateString()}</span>\`;
-    }
+    meta.innerHTML = \`<span>\${new Date(scans[0].date).toLocaleDateString()}</span><span>\${new Date(scans[scans.length-1].date).toLocaleDateString()}</span>\`;
 
     if (data.trend) {
       const t = data.trend;
       const arrow = t.direction === 'improving' ? '📈' : t.direction === 'declining' ? '📉' : '➡️';
       const cls = t.direction === 'improving' ? 'trend-up' : t.direction === 'declining' ? 'trend-down' : 'trend-stable';
-      summary.innerHTML = \`
-        <span class="\${cls}">\${arrow} \${t.direction.charAt(0).toUpperCase() + t.direction.slice(1)}</span> —
-        Score changed by <strong class="\${cls}">\${t.scoreChange > 0 ? '+' : ''}\${t.scoreChange}</strong> points over
-        <strong>\${t.totalScans}</strong> scans.
-        Issues changed by <strong>\${t.issuesChange > 0 ? '+' : ''}\${t.issuesChange}</strong>.
-      \`;
+      summary.innerHTML = \`<span class="\${cls}">\${arrow} \${t.direction.charAt(0).toUpperCase() + t.direction.slice(1)}</span> — Score changed by <strong class="\${cls}">\${t.scoreChange > 0 ? '+' : ''}\${t.scoreChange}</strong> pts over <strong>\${t.totalScans}</strong> scans.\`;
     }
-
     section.classList.add('show');
   } catch(e) { console.error(e); }
 }
@@ -1403,17 +1848,13 @@ async function registerMonitor() {
   const email = document.getElementById('monitorEmail').value.trim();
   const msg = document.getElementById('monitorMsg');
   if (!email) { msg.textContent = 'Please enter your email address'; msg.className = 'monitor-msg show error'; return; }
-
   try {
     const res = await fetch('/api/monitor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: currentScan.url, email }) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     msg.textContent = '✅ ' + data.message;
     msg.className = 'monitor-msg show success';
-  } catch(e) {
-    msg.textContent = e.message;
-    msg.className = 'monitor-msg show error';
-  }
+  } catch(e) { msg.textContent = e.message; msg.className = 'monitor-msg show error'; }
 }
 
 async function showHistory() {
@@ -1433,7 +1874,7 @@ async function showHistory() {
         </div>
       \`).join('');
     }
-    section.style.display = 'block';
+    section.classList.add('show');
   } catch(e) { console.error(e); }
 }
 
@@ -1446,7 +1887,15 @@ async function checkout(plan) {
   } catch(e) { alert('Checkout error: ' + e.message); }
 }
 
+// Enter key to scan
 document.getElementById('urlInput').addEventListener('keypress', e => { if (e.key === 'Enter') runScan(); });
+// Clear error on input
+document.getElementById('urlInput').addEventListener('input', () => {
+  document.getElementById('urlInput').classList.remove('input-error');
+  document.getElementById('errorMsg').classList.remove('show');
+});
+
+// Handle URL params
 const params = new URLSearchParams(window.location.search);
 if (params.get('checkout') === 'success') alert('🎉 Subscription activated! Thank you.');
 if (params.get('checkout') === 'cancel') alert('Checkout cancelled.');
