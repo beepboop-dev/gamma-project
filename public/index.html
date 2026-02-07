@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MetaAPI — Developer Utility API</title>
+<meta name="description" content="Email validation, URL metadata, QR codes, hashing, text analysis. One API, simple pricing.">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f172a;--surface:#1e293b;--border:#334155;--text:#e2e8f0;--muted:#94a3b8;--accent:#38bdf8;--green:#34d399;--purple:#a78bfa}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.container{max-width:960px;margin:0 auto;padding:0 24px}
+
+/* Nav */
+nav{padding:16px 0;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:10}
+nav .container{display:flex;justify-content:space-between;align-items:center}
+nav .logo{font-size:1.3em;font-weight:700;color:var(--text)}
+nav .logo span{color:var(--accent)}
+nav .links a{margin-left:24px;color:var(--muted);font-size:.9em}
+nav .links a:hover{color:var(--text)}
+
+/* Hero */
+.hero{padding:80px 0 60px;text-align:center}
+.hero h1{font-size:3em;font-weight:800;line-height:1.1;margin-bottom:16px}
+.hero h1 span{background:linear-gradient(135deg,var(--accent),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{font-size:1.2em;color:var(--muted);max-width:600px;margin:0 auto 32px}
+.hero-buttons{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-block;padding:12px 28px;border-radius:8px;font-weight:600;font-size:1em;border:none;cursor:pointer;transition:all .15s}
+.btn-primary{background:var(--accent);color:#0f172a}.btn-primary:hover{opacity:.9;text-decoration:none}
+.btn-secondary{background:var(--surface);color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{border-color:var(--accent);text-decoration:none}
+
+/* Code block */
+.code-hero{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;text-align:left;max-width:640px;margin:40px auto 0;font-family:'SF Mono',Monaco,monospace;font-size:.88em;overflow-x:auto}
+.code-hero .prompt{color:var(--muted)}
+.code-hero .cmd{color:var(--green)}
+.code-hero .output{color:var(--muted);margin-top:8px;white-space:pre}
+
+/* Sections */
+section{padding:60px 0}
+section h2{font-size:2em;font-weight:700;margin-bottom:8px}
+section .subtitle{color:var(--muted);margin-bottom:32px}
+
+/* Endpoint cards */
+.endpoints{display:grid;grid-template-columns:1fr;gap:16px}
+.endpoint{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;transition:border-color .15s}
+.endpoint:hover{border-color:var(--accent)}
+.endpoint .method{display:inline-block;font-family:monospace;font-size:.8em;font-weight:700;padding:2px 8px;border-radius:4px;margin-right:8px}
+.endpoint .get{background:#065f4620;color:var(--green)}
+.endpoint .post{background:#7c3aed20;color:var(--purple)}
+.endpoint .path{font-family:monospace;font-size:.95em;color:var(--text)}
+.endpoint .desc{color:var(--muted);font-size:.9em;margin-top:6px}
+.endpoint .example{background:var(--bg);border-radius:6px;padding:12px;margin-top:10px;font-family:monospace;font-size:.82em;color:var(--muted);overflow-x:auto;white-space:pre}
+
+/* Pricing */
+.pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+.plan{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;text-align:center}
+.plan.featured{border-color:var(--accent);position:relative}
+.plan.featured::before{content:'POPULAR';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--accent);color:#0f172a;font-size:.7em;font-weight:700;padding:2px 12px;border-radius:20px}
+.plan h3{font-size:1.3em;margin-bottom:4px}
+.plan .price{font-size:2.4em;font-weight:800;margin:12px 0 4px}
+.plan .price span{font-size:.4em;color:var(--muted);font-weight:400}
+.plan ul{list-style:none;text-align:left;margin:16px 0}
+.plan li{padding:6px 0;color:var(--muted);font-size:.9em}
+.plan li::before{content:'✓ ';color:var(--green)}
+
+/* Get started */
+.get-started{text-align:center;background:var(--surface);border-radius:16px;padding:48px 24px;border:1px solid var(--border)}
+.get-started input{padding:12px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:1em;width:280px;margin-right:8px}
+.get-started .result{margin-top:16px;font-family:monospace;font-size:.9em;color:var(--green);display:none}
+
+footer{padding:32px 0;text-align:center;color:var(--muted);font-size:.85em;border-top:1px solid var(--border)}
+
+@media(max-width:600px){
+  .hero h1{font-size:2em}
+  nav .links a{margin-left:12px;font-size:.8em}
+  .get-started input{width:100%;margin-bottom:8px;margin-right:0}
+}
+</style>
+</head>
+<body>
+
+<nav><div class="container">
+  <div class="logo">Meta<span>API</span></div>
+  <div class="links">
+    <a href="#docs">Docs</a>
+    <a href="#pricing">Pricing</a>
+    <a href="https://github.com/beepboop-dev/gamma-project">GitHub</a>
+  </div>
+</div></nav>
+
+<section class="hero"><div class="container">
+  <h1>The <span>utility API</span> for developers</h1>
+  <p>Email validation, URL metadata, QR codes, hashing, UUIDs, text analysis — all in one clean REST API. Free tier included.</p>
+  <div class="hero-buttons">
+    <a href="#get-started" class="btn btn-primary">Get Free API Key</a>
+    <a href="#docs" class="btn btn-secondary">Read Docs</a>
+  </div>
+  <div class="code-hero">
+    <div><span class="prompt">$ </span><span class="cmd">curl "https://gamma.abapture.ai/v1/validate/email?email=test@gmail.com" \
+  -H "x-api-key: YOUR_KEY"</span></div>
+    <div class="output">{
+  "email": "test@gmail.com",
+  "valid": true,
+  "domain": "gmail.com"
+}</div>
+  </div>
+</div></section>
+
+<section id="docs"><div class="container">
+  <h2>API Reference</h2>
+  <p class="subtitle">Base URL: <code>https://gamma.abapture.ai/v1</code> · Auth: <code>x-api-key</code> header or <code>api_key</code> query param</p>
+  <div class="endpoints">
+
+    <div class="endpoint">
+      <span class="method get">GET</span><span class="path">/validate/email?email={email}</span>
+      <div class="desc">Validate an email address format and extract domain</div>
+      <div class="example">curl "https://gamma.abapture.ai/v1/validate/email?email=hello@example.com" -H "x-api-key: YOUR_KEY"
+
+→ { "email": "hello@example.com", "valid": true, "domain": "example.com" }</div>
+    </div>
+
+    <div class="endpoint">
+      <span class="method get">GET</span><span class="path">/meta/url?url={url}</span>
+      <div class="desc">Extract title, description, OG image, and favicon from any URL</div>
+      <div class="example">curl "https://gamma.abapture.ai/v1/meta/url?url=https://github.com" -H "x-api-key: YOUR_KEY"
+
+→ { "title": "GitHub", "description": "...", "image": "...", "favicon": "..." }</div>
+    </div>
+
+    <div class="endpoint">
+      <span class="method get">GET</span><span class="path">/generate/qr?text={text}&amp;format=svg|json</span>
+      <div class="desc">Generate QR codes as SVG or base64 data URL</div>
+      <div class="example">curl "https://gamma.abapture.ai/v1/generate/qr?text=https://example.com&format=svg" -H "x-api-key: YOUR_KEY"
+
+→ (SVG image)</div>
+    </div>
+
+    <div class="endpoint">
+      <span class="method get">GET</span><span class="path">/generate/hash?text={text}&amp;algorithm=sha256</span>
+      <div class="desc">Hash text with SHA-256, MD5, SHA-512, etc.</div>
+      <div class="example">curl "https://gamma.abapture.ai/v1/generate/hash?text=hello&algorithm=sha256" -H "x-api-key: YOUR_KEY"
+
+→ { "hash": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824" }</div>
+    </div>
+
+    <div class="endpoint">
+      <span class="method get">GET</span><span class="path">/generate/uuid?count={1-100}</span>
+      <div class="desc">Generate one or more UUIDs</div>
+      <div class="example">curl "https://gamma.abapture.ai/v1/generate/uuid?count=3" -H "x-api-key: YOUR_KEY"
+
+→ { "count": 3, "uuids": ["...", "...", "..."] }</div>
+    </div>
+
+    <div class="endpoint">
+      <span class="method post">POST</span><span class="path">/analyze/text</span>
+      <div class="desc">Word count, reading time, sentence count, avg word length</div>
+      <div class="example">curl -X POST "https://gamma.abapture.ai/v1/analyze/text" \
+  -H "x-api-key: YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"text": "Hello world. This is a test."}'
+
+→ { "characters": 28, "words": 6, "sentences": 2, "reading_time_seconds": 2 }</div>
+    </div>
+
+    <div class="endpoint">
+      <span class="method get">GET</span><span class="path">/convert/timestamp?ts={unix}&amp;date={iso}</span>
+      <div class="desc">Convert between Unix timestamps and ISO dates (no params = now)</div>
+      <div class="example">curl "https://gamma.abapture.ai/v1/convert/timestamp?ts=1700000000" -H "x-api-key: YOUR_KEY"
+
+→ { "unix": 1700000000, "iso": "2023-11-14T22:13:20.000Z" }</div>
+    </div>
+
+    <div class="endpoint">
+      <span class="method get">GET</span><span class="path">/lookup/ip</span>
+      <div class="desc">Get the requester's IP address</div>
+      <div class="example">curl "https://gamma.abapture.ai/v1/lookup/ip" -H "x-api-key: YOUR_KEY"
+
+→ { "ip": "203.0.113.42" }</div>
+    </div>
+
+  </div>
+</div></section>
+
+<section id="pricing"><div class="container">
+  <h2>Pricing</h2>
+  <p class="subtitle">Start free. Scale when you need to.</p>
+  <div class="pricing-grid">
+    <div class="plan">
+      <h3>Free</h3>
+      <div class="price">$0<span>/mo</span></div>
+      <ul>
+        <li>100 requests/day</li>
+        <li>All endpoints</li>
+        <li>Community support</li>
+      </ul>
+      <a href="#get-started" class="btn btn-secondary" style="width:100%">Get API Key</a>
+    </div>
+    <div class="plan featured">
+      <h3>Pro</h3>
+      <div class="price">$9<span>/mo</span></div>
+      <ul>
+        <li>10,000 requests/day</li>
+        <li>All endpoints</li>
+        <li>Priority support</li>
+      </ul>
+      <button class="btn btn-primary" style="width:100%" onclick="checkout('pro')">Subscribe</button>
+    </div>
+    <div class="plan">
+      <h3>Enterprise</h3>
+      <div class="price">$49<span>/mo</span></div>
+      <ul>
+        <li>Unlimited requests</li>
+        <li>All endpoints</li>
+        <li>Dedicated support</li>
+      </ul>
+      <button class="btn btn-primary" style="width:100%" onclick="checkout('enterprise')">Subscribe</button>
+    </div>
+  </div>
+</div></section>
+
+<section id="get-started"><div class="container">
+  <div class="get-started">
+    <h2>Get Your Free API Key</h2>
+    <p class="subtitle">Enter your email — instant access, no credit card.</p>
+    <form onsubmit="getKey(event)">
+      <input type="email" id="email-input" placeholder="you@example.com" required>
+      <button type="submit" class="btn btn-primary">Generate Key</button>
+    </form>
+    <div class="result" id="key-result"></div>
+  </div>
+</div></section>
+
+<footer><div class="container">
+  <p>MetaAPI — Built by <a href="https://abapture.ai">Abapture</a> · Stripe test mode</p>
+</div></footer>
+
+<script>
+async function getKey(e) {
+  e.preventDefault();
+  const email = document.getElementById('email-input').value;
+  const res = await fetch('/generate-key', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ email })
+  });
+  const data = await res.json();
+  const el = document.getElementById('key-result');
+  el.style.display = 'block';
+  el.textContent = data.api_key ? `Your API key: ${data.api_key}` : `Error: ${data.error}`;
+}
+
+async function checkout(plan) {
+  const email = prompt('Enter your email for billing:');
+  if (!email) return;
+  const res = await fetch('/create-checkout', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ plan, email })
+  });
+  const data = await res.json();
+  if (data.url) window.location.href = data.url;
+  else alert(data.error);
+}
+</script>
+</body>
+</html>

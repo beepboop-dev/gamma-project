@@ -1,0 +1,17 @@
+{
+  "name": "metaapi",
+  "version": "1.0.0",
+  "description": "Developer utility API — validation, metadata, QR codes, hashing, text analysis",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "stripe": "^14.0.0",
+    "qrcode": "^1.5.4",
+    "cheerio": "^1.0.0",
+    "uuid": "^9.0.0"
+  }
+}
