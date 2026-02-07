@@ -14,8 +14,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Stripe setup
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || '');
-const STRIPE_PK = process.env.STRIPE_PK || '';
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const STRIPE_PK = process.env.STRIPE_PK;
 
 // In-memory scan history (persisted to disk)
 const DATA_DIR = path.join(__dirname, 'data');
@@ -47,161 +47,139 @@ const WCAG_RULES = {
     id: 'missing-alt', name: 'Images missing alt text',
     wcag: 'WCAG 2.1 SC 1.1.1', level: 'A', principle: 'Perceivable',
     description: 'All non-decorative images must have alternative text that describes their content.',
-    fix: 'Add an alt="" attribute to every <img> tag. Describe what the image shows in 1-2 sentences (e.g., alt="Company logo"). For decorative images, use alt="" (empty). This is the #1 issue in ADA lawsuits.',
     impact: 'critical', url: 'https://www.w3.org/WAI/WCAG21/Understanding/non-text-content.html'
   },
   'empty-alt': {
     id: 'empty-alt', name: 'Images with empty alt on non-decorative elements',
     wcag: 'WCAG 2.1 SC 1.1.1', level: 'A', principle: 'Perceivable',
     description: 'Empty alt="" should only be used for decorative images. Functional images need descriptive alt text.',
-    fix: 'Review each image with alt="". If it conveys meaning (product photo, chart, icon with function), add descriptive text. Only keep alt="" empty for purely decorative images like background patterns.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/non-text-content.html'
   },
   'missing-lang': {
     id: 'missing-lang', name: 'Missing page language',
     wcag: 'WCAG 2.1 SC 3.1.1', level: 'A', principle: 'Understandable',
     description: 'The default human language of each web page must be programmatically determined.',
-    fix: 'Add lang="en" to your opening <html> tag: <html lang="en">. Change "en" to your language code (e.g., "es" for Spanish, "fr" for French). This takes 10 seconds and helps screen readers pronounce words correctly.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/language-of-page.html'
   },
   'missing-title': {
     id: 'missing-title', name: 'Missing page title',
     wcag: 'WCAG 2.1 SC 2.4.2', level: 'A', principle: 'Operable',
     description: 'Web pages must have titles that describe topic or purpose.',
-    fix: 'Add a <title> tag inside <head> that clearly describes the page, e.g., <title>About Us - Company Name</title>. Each page should have a unique, descriptive title.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/page-titled.html'
   },
   'missing-heading': {
     id: 'missing-heading', name: 'No heading structure',
     wcag: 'WCAG 2.1 SC 1.3.1', level: 'A', principle: 'Perceivable',
     description: 'Pages should use heading elements to convey document structure.',
-    fix: 'Add heading tags (H1-H6) to structure your content. Start with one <h1> for the page title, then use <h2> for sections, <h3> for subsections. Screen reader users navigate by headings — it\'s like a table of contents.',
     impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html'
   },
   'skipped-heading': {
     id: 'skipped-heading', name: 'Skipped heading levels',
     wcag: 'WCAG 2.1 SC 1.3.1', level: 'A', principle: 'Perceivable',
     description: 'Heading levels should not be skipped (e.g., h1 → h3 without h2).',
-    fix: 'Fix the heading hierarchy so levels aren\'t skipped. Go H1 → H2 → H3, not H1 → H3. Think of it like an outline — you wouldn\'t skip from Chapter 1 to Section 1.1.1 without 1.1.',
     impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html'
   },
   'missing-form-label': {
     id: 'missing-form-label', name: 'Form inputs without labels',
     wcag: 'WCAG 2.1 SC 1.3.1 / 4.1.2', level: 'A', principle: 'Perceivable',
     description: 'All form inputs must have associated labels for screen reader users.',
-    fix: 'Add a <label for="fieldId"> element for each input, where "for" matches the input\'s "id". Example: <label for="email">Email</label> <input id="email" type="email">. Alternatively, use aria-label="Email" on the input.',
     impact: 'critical', url: 'https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html'
   },
   'empty-link': {
     id: 'empty-link', name: 'Links with no accessible text',
     wcag: 'WCAG 2.1 SC 2.4.4', level: 'A', principle: 'Operable',
     description: 'Links must have discernible text that describes their destination.',
-    fix: 'Add text content inside each <a> tag, or add aria-label="Description" to links that only contain icons/images. Screen readers announce "link" but can\'t say where it goes without text.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/link-purpose-in-context.html'
   },
   'empty-button': {
     id: 'empty-button', name: 'Buttons with no accessible text',
     wcag: 'WCAG 2.1 SC 4.1.2', level: 'A', principle: 'Robust',
     description: 'Buttons must have discernible text that describes their action.',
-    fix: 'Add text content or aria-label to buttons. Icon-only buttons need aria-label="Close" or similar. Screen readers just say "button" without a label — users can\'t tell what it does.',
     impact: 'critical', url: 'https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html'
   },
   'missing-viewport': {
     id: 'missing-viewport', name: 'Missing viewport meta tag',
     wcag: 'WCAG 2.1 SC 1.4.10', level: 'AA', principle: 'Perceivable',
     description: 'Pages should include a viewport meta tag for mobile accessibility.',
-    fix: 'Add this to your <head>: <meta name="viewport" content="width=device-width, initial-scale=1">. Do NOT add maximum-scale=1 or user-scalable=no — people with low vision need to zoom.',
     impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/reflow.html'
   },
   'no-skip-link': {
     id: 'no-skip-link', name: 'No skip navigation link',
     wcag: 'WCAG 2.1 SC 2.4.1', level: 'A', principle: 'Operable',
     description: 'A mechanism should be available to bypass blocks of content that are repeated on multiple pages.',
-    fix: 'Add a "Skip to main content" link as the first element in your <body>: <a href="#main" class="skip-link">Skip to main content</a>. Then add id="main" to your main content area. Hide it visually but keep it accessible.',
     impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/bypass-blocks.html'
   },
   'missing-landmark': {
     id: 'missing-landmark', name: 'No ARIA landmarks or semantic HTML5',
     wcag: 'WCAG 2.1 SC 1.3.1', level: 'A', principle: 'Perceivable',
     description: 'Pages should use ARIA landmarks or HTML5 semantic elements (main, nav, header, footer).',
-    fix: 'Replace generic <div> wrappers with semantic HTML5: use <header> for the top bar, <nav> for navigation, <main> for primary content, and <footer> for the bottom. This gives screen readers a page map.',
     impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html'
   },
   'low-contrast-text': {
     id: 'low-contrast-text', name: 'Potential low contrast text',
     wcag: 'WCAG 2.1 SC 1.4.3', level: 'AA', principle: 'Perceivable',
     description: 'Text must have a contrast ratio of at least 4.5:1 against its background (3:1 for large text).',
-    fix: 'Use a contrast checker tool (like WebAIM Contrast Checker) and ensure all text has at least 4.5:1 contrast ratio against its background. Darken light text or lighten dark backgrounds. Large text (18px+ bold or 24px+) only needs 3:1.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html'
   },
   'autoplay-media': {
     id: 'autoplay-media', name: 'Auto-playing media',
     wcag: 'WCAG 2.1 SC 1.4.2', level: 'A', principle: 'Perceivable',
     description: 'Audio that plays automatically for more than 3 seconds must have a mechanism to pause or stop.',
-    fix: 'Remove the autoplay attribute from <video> and <audio> tags. If you must autoplay, add muted and provide visible pause/stop controls. Auto-playing audio interferes with screen readers.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/audio-control.html'
   },
   'tabindex-positive': {
     id: 'tabindex-positive', name: 'Positive tabindex values',
     wcag: 'WCAG 2.1 SC 2.4.3', level: 'A', principle: 'Operable',
     description: 'Avoid positive tabindex values; they create confusing tab order for keyboard users.',
-    fix: 'Remove positive tabindex values (tabindex="1", "2", etc.) and use tabindex="0" instead. Rely on DOM order to control tab sequence. Positive values override the natural flow and confuse keyboard users.',
     impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/focus-order.html'
   },
   'missing-table-header': {
     id: 'missing-table-header', name: 'Data tables without headers',
     wcag: 'WCAG 2.1 SC 1.3.1', level: 'A', principle: 'Perceivable',
     description: 'Data tables must use th elements or scope attributes to identify headers.',
-    fix: 'Replace the first row\'s <td> cells with <th scope="col"> for column headers. For row headers, use <th scope="row">. This lets screen readers announce "Column: Name, Row: John Smith" as users navigate.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html'
   },
   'meta-refresh': {
     id: 'meta-refresh', name: 'Meta refresh redirect',
     wcag: 'WCAG 2.1 SC 2.2.1', level: 'A', principle: 'Operable',
     description: 'Pages should not auto-redirect using meta refresh. Users must control timing.',
-    fix: 'Remove <meta http-equiv="refresh"> and use server-side redirects (HTTP 301/302) instead. Auto-refresh disorients screen reader users who may be in the middle of reading content.',
     impact: 'critical', url: 'https://www.w3.org/WAI/WCAG21/Understanding/timing-adjustable.html'
   },
   'inline-styles-text': {
     id: 'inline-styles-text', name: 'Inline text styling (potential contrast issues)',
     wcag: 'WCAG 2.1 SC 1.4.3', level: 'AA', principle: 'Perceivable',
     description: 'Inline color styles may cause contrast issues that are hard to audit.',
-    fix: 'Move inline color styles to CSS classes. Test all color combinations with a contrast checker to ensure 4.5:1 minimum ratio.',
     impact: 'minor', url: 'https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html'
   },
+  // NEW RULES
   'color-contrast-inline': {
     id: 'color-contrast-inline', name: 'Inline color contrast issues',
     wcag: 'WCAG 2.1 SC 1.4.3', level: 'AA', principle: 'Perceivable',
     description: 'Inline styles set text/background colors that may fail the 4.5:1 contrast ratio requirement.',
-    fix: 'Change the text color or background color so the contrast ratio reaches at least 4.5:1. Use WebAIM\'s contrast checker to find compliant color pairs. The exact failing elements and ratios are listed above.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html'
   },
   'keyboard-trap': {
     id: 'keyboard-trap', name: 'Potential keyboard trap',
     wcag: 'WCAG 2.1 SC 2.1.2', level: 'A', principle: 'Operable',
     description: 'Content must not trap keyboard focus. Users must be able to navigate away using standard keys.',
-    fix: 'Ensure all interactive components (modals, widgets, embedded content) can be exited with Tab or Escape. Never use preventDefault() on key events without providing an escape mechanism.',
     impact: 'critical', url: 'https://www.w3.org/WAI/WCAG21/Understanding/no-keyboard-trap.html'
   },
   'missing-focus-style': {
     id: 'missing-focus-style', name: 'Focus styles suppressed',
     wcag: 'WCAG 2.1 SC 2.4.7', level: 'AA', principle: 'Operable',
     description: 'Interactive elements must have a visible focus indicator for keyboard users. outline:none or outline:0 without alternative styling removes this.',
-    fix: 'Remove outline:none/outline:0 from your CSS, or replace it with a custom focus style: :focus { outline: 2px solid #2563eb; outline-offset: 2px; }. You can use :focus-visible to only show focus rings for keyboard users.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/focus-visible.html'
   },
   'generic-link-text': {
     id: 'generic-link-text', name: 'Generic or ambiguous link text',
     wcag: 'WCAG 2.1 SC 2.4.4', level: 'A', principle: 'Operable',
     description: 'Link text should describe the destination. Phrases like "click here", "read more", or "learn more" are ambiguous without context.',
-    fix: 'Replace generic text like "click here" or "read more" with descriptive text: instead of "Click here to view pricing", write "View pricing plans". Screen reader users often navigate by listing all links — "click here" repeated 10x is useless.',
     impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/link-purpose-in-context.html'
   },
   'missing-keyboard-access': {
     id: 'missing-keyboard-access', name: 'Non-interactive elements with click handlers',
     wcag: 'WCAG 2.1 SC 2.1.1', level: 'A', principle: 'Operable',
     description: 'Elements with click handlers (onclick) that are not natively interactive (links, buttons) must also have keyboard access via tabindex and keydown handlers.',
-    fix: 'Replace clickable <div> and <span> elements with <button> or <a> tags. If you must use a div, add role="button", tabindex="0", and an onkeydown handler that triggers on Enter/Space.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/keyboard.html'
   }
 };
@@ -824,12 +802,8 @@ app.get('/api/scan/:id/pdf', (req, res) => {
       doc.fontSize(9).font('Helvetica')
         .text(`   WCAG Reference: ${issue.wcag} (Level ${issue.level})`)
         .text(`   ${issue.description}`)
-        .text(`   Occurrences: ${issue.count}`);
-      if (issue.fix) {
-        doc.font('Helvetica-Bold').text(`   How to fix:`, { continued: true })
-          .font('Helvetica').text(` ${issue.fix}`);
-      }
-      doc.text(`   Learn more: ${issue.url}`);
+        .text(`   Occurrences: ${issue.count}`)
+        .text(`   Learn more: ${issue.url}`);
       if (issue.elements && issue.elements.length > 0) {
         doc.text(`   Examples: ${issue.elements.slice(0, 3).join(', ')}`);
       }
@@ -940,6 +914,52 @@ app.post('/api/checkout', async (req, res) => {
   } catch(e) { res.status(500).json({ error: 'Checkout failed: ' + e.message }); }
 });
 
+// ==================== EMAIL REPORT (LEAD CAPTURE) ====================
+let emailLeads = [];
+const LEADS_FILE = path.join(DATA_DIR, 'email-leads.json');
+try { emailLeads = JSON.parse(fs.readFileSync(LEADS_FILE, 'utf8')); } catch(e) {}
+function saveLeads() { fs.writeFileSync(LEADS_FILE, JSON.stringify(emailLeads, null, 2)); }
+
+app.post('/api/email-report', (req, res) => {
+  const { email, scanId } = req.body;
+  if (!email || !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) return res.status(400).json({ error: 'Valid email required' });
+  const scan = scanHistory.find(s => s.id === scanId);
+  if (!scan) return res.status(404).json({ error: 'Scan not found' });
+
+  // Save lead
+  emailLeads.push({ email: email.trim().toLowerCase(), scanId, url: scan.url, score: scan.score, capturedAt: new Date().toISOString() });
+  saveLeads();
+
+  // In production, we'd send an actual email here. For now, confirm capture.
+  res.json({ message: 'Report sent! Check your inbox for the full compliance report.', email });
+});
+
+// ==================== COMPARE ENDPOINT ====================
+app.post('/api/compare', async (req, res) => {
+  const { url1, url2 } = req.body;
+  if (!url1 || !url2) return res.status(400).json({ error: 'Two URLs are required' });
+
+  let norm1 = url1.trim(), norm2 = url2.trim();
+  if (!norm1.match(/^https?:\/\//i)) norm1 = 'https://' + norm1;
+  if (!norm2.match(/^https?:\/\//i)) norm2 = 'https://' + norm2;
+  try { new URL(norm1); new URL(norm2); } catch(e) {
+    return res.status(400).json({ error: 'Invalid URL format' });
+  }
+
+  try {
+    const [html1, html2] = await Promise.all([fetchHTML(norm1), fetchHTML(norm2)]);
+    const result1 = scanHTML(html1, norm1);
+    const result2 = scanHTML(html2, norm2);
+    const r1 = { id: uuidv4(), ...result1 };
+    const r2 = { id: uuidv4(), ...result2 };
+    scanHistory.push(r1, r2);
+    saveHistory();
+    res.json({ site1: r1, site2: r2, winner: r1.score >= r2.score ? 'site1' : 'site2' });
+  } catch(err) {
+    res.status(500).json({ error: 'Compare failed: ' + (err.message || 'Unknown error') });
+  }
+});
+
 // ==================== LANDING PAGE ====================
 app.get('/', (req, res) => { res.send(LANDING_PAGE); });
 app.get('/health', (req, res) => res.json({ status: 'ok', uptime: process.uptime(), monitors: monitors.filter(m => m.active).length, totalScans: scanHistory.length }));
@@ -950,140 +970,64 @@ const LANDING_PAGE = `<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ComplianceShield — ADA & WCAG Accessibility Compliance Scanner</title>
-<meta name="description" content="Free ADA & WCAG 2.1 accessibility compliance scanner. Scan any website in seconds. Get detailed reports with fix instructions, compliance badges, and PDF exports. Trusted by 2,400+ businesses.">
-<meta name="keywords" content="ADA compliance, WCAG 2.1, web accessibility, accessibility scanner, ADA lawsuit, WCAG checker, Section 508, accessibility audit">
-<meta property="og:title" content="ComplianceShield — Free ADA & WCAG Accessibility Scanner">
-<meta property="og:description" content="Scan any website for accessibility compliance in seconds. 23 WCAG checks, PDF reports, fix instructions.">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://gamma.abapture.ai">
-<link rel="canonical" href="https://gamma.abapture.ai">
+<meta name="description" content="Scan any website for ADA/WCAG accessibility compliance in seconds. Get detailed reports, compliance badges, and actionable fixes. Avoid costly lawsuits.">
 <style>
 :root{--bg:#0a0a0f;--card:#12121a;--border:#1e1e2e;--accent:#6c5ce7;--accent2:#a29bfe;--text:#e0e0e0;--muted:#888;--green:#00b894;--red:#e74c3c;--orange:#f39c12;--yellow:#f1c40f}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,'Inter','Segoe UI',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased}
-a{color:var(--accent2);text-decoration:none}a:hover{text-decoration:underline}
-.container{max-width:1000px;margin:0 auto;padding:0 20px}
-
-/* ===== NAV ===== */
-.nav{display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid var(--border)}
-.nav-brand{font-weight:800;font-size:1.2rem;color:white;display:flex;align-items:center;gap:8px}
-.nav-links{display:flex;gap:20px;font-size:0.9rem}
-.nav-links a{color:var(--muted);transition:color .2s}
-.nav-links a:hover{color:white;text-decoration:none}
-
-/* ===== HERO ===== */
-.hero{text-align:center;padding:50px 0 36px}
+body{font-family:-apple-system,'Inter','Segoe UI',sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{color:var(--accent2);text-decoration:none}
+.container{max-width:1000px;margin:0 auto;padding:0 24px}
+.hero{text-align:center;padding:60px 0 40px}
 .hero-badge{display:inline-block;background:linear-gradient(135deg,#e74c3c,#e67e22);color:white;padding:6px 16px;border-radius:20px;font-size:0.8rem;font-weight:700;margin-bottom:20px;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}
-.hero h1{font-size:3rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:16px;line-height:1.15}
-.hero p{font-size:1.15rem;color:var(--muted);max-width:640px;margin:0 auto 28px}
-.trust-bar{display:flex;justify-content:center;gap:32px;flex-wrap:wrap;margin-top:12px;padding:16px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
-.trust-item{display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--muted)}
-.trust-item strong{color:white}
-
-/* ===== SCANNER ===== */
-.scanner{background:var(--card);border:2px solid var(--accent);border-radius:16px;padding:28px;margin:0 auto 48px;max-width:700px}
-.scanner h2{text-align:center;margin-bottom:16px;font-size:1.4rem;color:white}
+.hero h1{font-size:3rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:16px}
+.hero p{font-size:1.2rem;color:var(--muted);max-width:650px;margin:0 auto 32px}
+.shield-icon{font-size:4rem;margin-bottom:16px}
+.scanner{background:var(--card);border:2px solid var(--accent);border-radius:16px;padding:32px;margin:0 auto 60px;max-width:700px}
+.scanner h2{text-align:center;margin-bottom:16px;font-size:1.5rem;color:white}
 .scanner-form{display:flex;gap:12px}
-.scanner-input{flex:1;padding:14px 18px;border-radius:10px;border:1px solid var(--border);background:#1a1a2e;color:white;font-size:1rem;outline:none;transition:border .2s}
-.scanner-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(108,92,231,.15)}
-.scanner-input.input-error{border-color:var(--red);box-shadow:0 0 0 3px rgba(231,76,60,.15)}
-.scanner-btn{padding:14px 28px;background:linear-gradient(135deg,var(--accent),#7c6cf0);color:white;border:none;border-radius:10px;font-weight:700;font-size:1rem;cursor:pointer;white-space:nowrap;transition:transform .15s,box-shadow .15s}
-.scanner-btn:hover{transform:translateY(-1px);box-shadow:0 4px 15px rgba(108,92,231,.4)}
-.scanner-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none;box-shadow:none}
+.scanner-input{flex:1;padding:14px 18px;border-radius:10px;border:1px solid var(--border);background:#1a1a2e;color:white;font-size:1rem;outline:none}
+.scanner-input:focus{border-color:var(--accent)}
+.scanner-btn{padding:14px 28px;background:var(--accent);color:white;border:none;border-radius:10px;font-weight:700;font-size:1rem;cursor:pointer;white-space:nowrap}
+.scanner-btn:hover{background:var(--accent2)}
+.scanner-btn:disabled{opacity:0.5;cursor:not-allowed}
 .scanner-hint{text-align:center;margin-top:8px;font-size:0.8rem;color:var(--muted)}
-
-/* ===== LOADING ===== */
-.loading{display:none;text-align:center;margin:24px 0}.loading.show{display:block}
-.spinner{display:inline-block;width:48px;height:48px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.loading-steps{margin-top:12px;font-size:0.85rem;color:var(--muted)}
-.loading-step{opacity:0.4;transition:opacity .3s}.loading-step.active{opacity:1;color:var(--accent2)}
-
-/* ===== ERROR ===== */
-.error-msg{display:none;padding:16px 20px;background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.3);border-radius:12px;margin:16px 0}
-.error-msg.show{display:flex;align-items:flex-start;gap:12px}
-.error-icon{font-size:1.5rem;flex-shrink:0}
-.error-content h4{color:var(--red);font-size:0.95rem;margin-bottom:4px}
-.error-content p{color:var(--muted);font-size:0.85rem;line-height:1.5}
-.error-content .error-suggestions{margin-top:8px;padding-left:16px;font-size:0.8rem;color:var(--muted)}
-.error-content .error-suggestions li{margin-bottom:2px}
-
-/* ===== RESULTS ===== */
 .results{display:none;margin-top:24px}.results.show{display:block}
+.score-ring{text-align:center;margin:20px 0}
+.score-number{font-size:3.5rem;font-weight:800}
+.score-label{font-size:0.9rem;color:var(--muted)}
+.compliance-status{text-align:center;padding:10px 20px;border-radius:8px;font-weight:700;margin:12px 0;font-size:1.1rem}
+.status-compliant{background:rgba(0,184,148,0.15);color:var(--green);border:1px solid var(--green)}
+.status-needs-improvement{background:rgba(243,156,18,0.15);color:var(--orange);border:1px solid var(--orange)}
+.status-partially-compliant{background:rgba(241,196,15,0.15);color:var(--yellow);border:1px solid var(--yellow)}
+.status-non-compliant{background:rgba(231,76,60,0.15);color:var(--red);border:1px solid var(--red)}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.stat{background:var(--bg);padding:16px;border-radius:10px;text-align:center}
+.stat-num{font-size:1.8rem;font-weight:800}
+.stat-label{font-size:0.75rem;color:var(--muted);text-transform:uppercase}
+.issues-list{margin-top:20px}
+.issue-item{background:var(--bg);border-radius:10px;padding:16px;margin-bottom:10px;border-left:4px solid var(--red)}
+.issue-item.serious{border-left-color:var(--orange)}
+.issue-item.moderate{border-left-color:var(--yellow)}
+.issue-item.minor{border-left-color:var(--muted)}
+.issue-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.issue-name{font-weight:700;color:white}
+.issue-impact{font-size:0.7rem;padding:3px 8px;border-radius:4px;font-weight:700;text-transform:uppercase}
+.impact-critical{background:rgba(231,76,60,0.2);color:var(--red)}
+.impact-serious{background:rgba(230,126,34,0.2);color:var(--orange)}
+.impact-moderate{background:rgba(241,196,15,0.2);color:var(--yellow)}
+.impact-minor{background:rgba(149,165,166,0.2);color:var(--muted)}
+.issue-wcag{font-size:0.8rem;color:var(--accent2);margin-bottom:4px}
+.issue-desc{font-size:0.85rem;color:var(--muted)}
+.issue-elements{font-family:monospace;font-size:0.75rem;background:#1a1a2e;padding:8px;border-radius:6px;margin-top:8px;color:var(--orange);overflow-x:auto}
+.issue-link{font-size:0.75rem;color:var(--accent2);margin-top:4px;display:inline-block}
+.passes-section{margin-top:20px}
+.pass-item{display:inline-block;background:rgba(0,184,148,0.1);color:var(--green);padding:6px 12px;border-radius:6px;font-size:0.8rem;margin:3px}
+.action-btns{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.action-btn{padding:10px 18px;border-radius:8px;font-weight:600;font-size:0.85rem;cursor:pointer;border:1px solid var(--border);background:var(--card);color:white;transition:0.2s}
+.action-btn:hover{background:var(--accent);border-color:var(--accent)}
 
-/* Score Circle */
-.score-circle-wrap{display:flex;justify-content:center;margin:20px 0}
-.score-circle{position:relative;width:160px;height:160px}
-.score-circle svg{transform:rotate(-90deg);width:160px;height:160px}
-.score-circle .bg{fill:none;stroke:var(--border);stroke-width:10}
-.score-circle .fg{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset 1.5s cubic-bezier(.4,0,.2,1),stroke .5s}
-.score-circle .score-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
-.score-circle .score-num{font-size:2.8rem;font-weight:800;line-height:1}
-.score-circle .score-label{font-size:0.75rem;color:var(--muted);margin-top:2px}
-
-.compliance-status{text-align:center;padding:10px 20px;border-radius:8px;font-weight:700;margin:12px 0;font-size:1.05rem}
-.status-compliant{background:rgba(0,184,148,0.12);color:var(--green);border:1px solid rgba(0,184,148,.3)}
-.status-needs-improvement{background:rgba(243,156,18,0.12);color:var(--orange);border:1px solid rgba(243,156,18,.3)}
-.status-partially-compliant{background:rgba(241,196,15,0.12);color:var(--yellow);border:1px solid rgba(241,196,15,.3)}
-.status-non-compliant{background:rgba(231,76,60,0.12);color:var(--red);border:1px solid rgba(231,76,60,.3)}
-
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0}
-.stat{background:var(--bg);padding:14px 8px;border-radius:10px;text-align:center;border:1px solid var(--border)}
-.stat-num{font-size:1.6rem;font-weight:800}
-.stat-label{font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
-
-/* Action buttons */
-.action-btns{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
-.action-btn{padding:10px 16px;border-radius:8px;font-weight:600;font-size:0.82rem;cursor:pointer;border:1px solid var(--border);background:var(--card);color:white;transition:all .2s}
-.action-btn:hover{background:var(--accent);border-color:var(--accent);transform:translateY(-1px)}
-
-/* Issues */
-.issues-list{margin-top:24px}
-.issues-list h3{color:white;margin-bottom:12px;font-size:1.1rem}
-.issue-card{background:var(--bg);border-radius:12px;margin-bottom:8px;border:1px solid var(--border);overflow:hidden;transition:border-color .2s}
-.issue-card:hover{border-color:rgba(255,255,255,.1)}
-.issue-card-header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer;user-select:none}
-.issue-card-header:hover{background:rgba(255,255,255,.02)}
-.issue-left{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
-.issue-severity-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.issue-severity-dot.critical{background:var(--red)}
-.issue-severity-dot.serious{background:var(--orange)}
-.issue-severity-dot.moderate{background:var(--yellow)}
-.issue-severity-dot.minor{background:var(--muted)}
-.issue-name{font-weight:600;color:white;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.issue-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
-.issue-count{font-size:0.75rem;color:var(--muted);background:rgba(255,255,255,.05);padding:2px 8px;border-radius:10px}
-.issue-impact{font-size:0.65rem;padding:3px 8px;border-radius:4px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
-.impact-critical{background:rgba(231,76,60,0.15);color:var(--red)}
-.impact-serious{background:rgba(230,126,34,0.15);color:var(--orange)}
-.impact-moderate{background:rgba(241,196,15,0.15);color:var(--yellow)}
-.impact-minor{background:rgba(149,165,166,0.15);color:var(--muted)}
-.issue-chevron{color:var(--muted);transition:transform .2s;font-size:0.8rem}
-.issue-card.open .issue-chevron{transform:rotate(180deg)}
-.issue-card-body{display:none;padding:0 16px 16px;border-top:1px solid var(--border)}
-.issue-card.open .issue-card-body{display:block}
-.issue-wcag{font-size:0.8rem;color:var(--accent2);margin:12px 0 6px;display:flex;align-items:center;gap:6px}
-.issue-desc{font-size:0.85rem;color:var(--muted);line-height:1.6}
-.issue-fix{font-size:0.85rem;color:#4ade80;background:rgba(0,184,148,0.06);border:1px solid rgba(0,184,148,0.15);border-left:3px solid var(--green);padding:12px 14px;border-radius:8px;margin-top:10px;line-height:1.7}
-.issue-fix strong{color:var(--green)}
-.issue-elements{font-family:'SF Mono',Monaco,monospace;font-size:0.75rem;background:#0d0d15;padding:10px 12px;border-radius:8px;margin-top:10px;color:var(--orange);overflow-x:auto;border:1px solid var(--border)}
-.issue-link{font-size:0.78rem;color:var(--accent2);margin-top:8px;display:inline-flex;align-items:center;gap:4px}
-
-/* Passes */
-.passes-section{margin-top:24px}
-.passes-section h3{color:var(--green);margin-bottom:10px;font-size:1rem}
-.pass-item{display:inline-block;background:rgba(0,184,148,0.08);color:var(--green);padding:5px 12px;border-radius:6px;font-size:0.78rem;margin:3px;border:1px solid rgba(0,184,148,.15)}
-
-/* Badge section */
-.badge-section{display:none;margin-top:20px;background:var(--bg);padding:20px;border-radius:12px;border:1px solid rgba(0,184,148,.3)}
-.badge-section.show{display:block}
-.badge-section h3{color:var(--green);margin-bottom:8px}
-.badge-code{background:#0d0d15;padding:12px;border-radius:8px;font-family:monospace;font-size:0.75rem;overflow-x:auto;color:var(--green);margin:8px 0;border:1px solid var(--border)}
-.copy-btn{font-size:0.78rem;padding:6px 14px;background:var(--green);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;transition:opacity .2s}
-.copy-btn:hover{opacity:0.85}
-
-/* Trend */
+/* Trend chart */
 .trend-section{display:none;margin-top:20px;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:20px}
 .trend-section.show{display:block}
 .trend-section h3{color:white;margin-bottom:12px}
@@ -1096,233 +1040,215 @@ a{color:var(--accent2);text-decoration:none}a:hover{text-decoration:underline}
 .trend-summary{margin-top:12px;padding:12px;background:var(--card);border-radius:8px;font-size:0.85rem}
 .trend-up{color:var(--green)}.trend-down{color:var(--red)}.trend-stable{color:var(--muted)}
 
-/* Monitor */
+/* Monitor section */
 .monitor-section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-top:20px}
-.monitor-section h3{color:white;margin-bottom:12px;font-size:1.05rem}
+.monitor-section h3{color:white;margin-bottom:12px;font-size:1.1rem}
 .monitor-form{display:flex;gap:10px;flex-wrap:wrap}
 .monitor-form input{flex:1;min-width:200px;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:#1a1a2e;color:white;font-size:0.9rem;outline:none}
 .monitor-form input:focus{border-color:var(--accent)}
 .monitor-form button{padding:10px 20px;background:var(--green);color:white;border:none;border-radius:8px;font-weight:700;cursor:pointer;white-space:nowrap}
-.monitor-msg{margin-top:8px;font-size:0.85rem;padding:8px 12px;border-radius:6px;display:none}
+.monitor-form button:hover{opacity:0.9}
+.monitor-msg{margin-top:8px;font-size:0.85rem;padding:8px;border-radius:6px;display:none}
 .monitor-msg.show{display:block}
-.monitor-msg.success{background:rgba(0,184,148,0.08);color:var(--green);border:1px solid rgba(0,184,148,.3)}
-.monitor-msg.error{background:rgba(231,76,60,0.08);color:var(--red);border:1px solid rgba(231,76,60,.3)}
+.monitor-msg.success{background:rgba(0,184,148,0.1);color:var(--green);border:1px solid var(--green)}
+.monitor-msg.error{background:rgba(231,76,60,0.1);color:var(--red);border:1px solid var(--red)}
 
-/* History */
-.history{margin:30px 0;display:none}
-.history.show{display:block}
-.history h3{margin-bottom:12px;color:white}
-.history-item{display:flex;justify-content:space-between;align-items:center;background:var(--card);padding:12px 16px;border-radius:8px;margin-bottom:6px;font-size:0.85rem;border:1px solid var(--border)}
-.history-url{color:white;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;margin-right:12px}
-.history-score{font-weight:700;margin-right:12px}
-.history-date{color:var(--muted);font-size:0.75rem;flex-shrink:0}
-
-/* ===== TRUST / SOCIAL PROOF ===== */
-.social-proof{margin:48px 0;text-align:center}
-.social-proof h2{font-size:1.6rem;color:white;margin-bottom:8px}
-.social-proof .subtitle{color:var(--muted);font-size:0.95rem;margin-bottom:32px}
-.testimonials{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;text-align:left}
-.testimonial{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px}
-.testimonial-stars{color:var(--yellow);font-size:0.9rem;margin-bottom:10px;letter-spacing:2px}
-.testimonial-text{font-size:0.9rem;color:var(--text);line-height:1.6;margin-bottom:14px;font-style:italic}
-.testimonial-author{display:flex;align-items:center;gap:10px}
-.testimonial-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--green));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.85rem;color:white}
-.testimonial-info .name{font-weight:600;color:white;font-size:0.85rem}
-.testimonial-info .role{font-size:0.75rem;color:var(--muted)}
-
-/* ===== URGENCY ===== */
-.urgency{background:linear-gradient(135deg,#1a0000,#2a0a0a);border:1px solid #4a1a1a;border-radius:16px;padding:36px 28px;margin:48px 0;text-align:center}
-.urgency h2{color:var(--red);font-size:1.7rem;margin-bottom:16px}
-.urgency-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0}
-.urgency-stat{padding:16px}
-.urgency-stat .num{font-size:2.2rem;font-weight:800;color:var(--red)}
+.urgency{background:linear-gradient(135deg,#1a0000,#2a0a0a);border:1px solid #4a1a1a;border-radius:16px;padding:40px;margin:60px 0;text-align:center}
+.urgency h2{color:var(--red);font-size:1.8rem;margin-bottom:16px}
+.urgency-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:24px 0}
+.urgency-stat{padding:20px}
+.urgency-stat .num{font-size:2.5rem;font-weight:800;color:var(--red)}
 .urgency-stat .label{color:var(--muted);font-size:0.85rem}
-.urgency p{color:var(--muted);max-width:600px;margin:14px auto;font-size:0.9rem;line-height:1.7}
-
-/* ===== COMPARISON ===== */
-.comparison{margin:48px 0}
-.comparison h2{text-align:center;font-size:1.7rem;margin-bottom:24px;color:white}
+.urgency p{color:var(--muted);max-width:600px;margin:16px auto;font-size:0.95rem;line-height:1.7}
+.comparison{margin:60px 0}
+.comparison h2{text-align:center;font-size:1.8rem;margin-bottom:24px;color:white}
 .comp-table{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden}
-.comp-table th{background:var(--accent);color:white;padding:12px;text-align:left;font-size:0.82rem}
-.comp-table td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:0.85rem}
+.comp-table th{background:var(--accent);color:white;padding:14px;text-align:left;font-size:0.85rem}
+.comp-table td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:0.9rem}
 .comp-table tr:last-child td{border-bottom:none}
 .comp-table .check{color:var(--green)}.comp-table .cross{color:var(--red)}
-.comp-highlight{background:rgba(108,92,231,0.08)}
-
-/* ===== SEO CONTENT ===== */
-.seo-section{margin:60px 0}
-.seo-section h2{font-size:1.8rem;color:white;margin-bottom:24px;text-align:center}
-.seo-article{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;margin-bottom:24px}
-.seo-article h3{color:white;font-size:1.2rem;margin-bottom:12px}
-.seo-article h4{color:var(--accent2);font-size:1rem;margin:20px 0 8px}
-.seo-article p{color:var(--muted);font-size:0.92rem;line-height:1.8;margin-bottom:12px}
-.seo-article ul,.seo-article ol{color:var(--muted);font-size:0.9rem;line-height:1.8;margin:8px 0 12px 20px}
-.seo-article li{margin-bottom:4px}
-.seo-article .highlight-box{background:rgba(108,92,231,.08);border:1px solid rgba(108,92,231,.2);border-radius:10px;padding:16px;margin:16px 0}
-.seo-article .highlight-box p{margin-bottom:0;color:var(--text)}
-.wcag-principles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:16px 0}
-.wcag-principle{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px}
-.wcag-principle h5{color:white;font-size:0.9rem;margin-bottom:4px}
-.wcag-principle p{font-size:0.82rem;margin-bottom:0}
-
-/* ===== PRICING ===== */
-.pricing-section{margin:48px 0}
-.pricing-section h2{text-align:center;font-size:1.7rem;margin-bottom:24px;color:white}
-.pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.price-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 20px;text-align:center;transition:transform .2s,border-color .2s}
-.price-card:hover{transform:translateY(-2px)}
-.price-card.featured{border-color:var(--accent);position:relative}
-.price-card.featured::before{content:'MOST POPULAR';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--accent);color:white;padding:4px 16px;border-radius:20px;font-size:0.65rem;font-weight:700;letter-spacing:.5px}
-.price-card h3{font-size:1.2rem;color:white;margin-bottom:4px}
-.price-card .subtitle{font-size:0.78rem;color:var(--muted);margin-bottom:14px}
-.price{font-size:2.3rem;font-weight:800;color:white;margin:10px 0}
-.price span{font-size:0.95rem;color:var(--muted);font-weight:400}
-.price-card ul{list-style:none;text-align:left;margin:18px 0}
-.price-card li{padding:4px 0;color:var(--muted);font-size:0.82rem}
+.comp-highlight{background:rgba(108,92,231,0.1)}
+.pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:40px 0}
+.price-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px 24px;text-align:center}
+.price-card.featured{border-color:var(--accent);position:relative;transform:scale(1.03)}
+.price-card.featured::before{content:'MOST POPULAR';position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:var(--accent);color:white;padding:4px 16px;border-radius:20px;font-size:0.7rem;font-weight:700}
+.price-card h3{font-size:1.3rem;color:white;margin-bottom:4px}
+.price-card .subtitle{font-size:0.8rem;color:var(--muted);margin-bottom:16px}
+.price{font-size:2.5rem;font-weight:800;color:white;margin:12px 0}
+.price span{font-size:1rem;color:var(--muted);font-weight:400}
+.price-card ul{list-style:none;text-align:left;margin:20px 0}
+.price-card li{padding:5px 0;color:var(--muted);font-size:0.85rem}
 .price-card li::before{content:'✓ ';color:var(--green);font-weight:bold}
-.price-btn{display:block;width:100%;padding:12px;border-radius:8px;font-weight:600;font-size:0.9rem;border:1px solid var(--border);background:transparent;color:white;cursor:pointer;transition:all .2s}
+.price-btn{display:block;width:100%;padding:12px;border-radius:8px;font-weight:600;font-size:0.95rem;border:1px solid var(--border);background:transparent;color:white;cursor:pointer;transition:0.2s}
 .price-btn:hover{background:var(--accent);border-color:var(--accent)}
 .price-card.featured .price-btn{background:var(--accent);border-color:var(--accent)}
-
-/* ===== FOOTER ===== */
-.site-footer{border-top:1px solid var(--border);margin-top:60px;padding:40px 0 24px}
-.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;margin-bottom:32px}
-.footer-brand h4{color:white;font-size:1.1rem;margin-bottom:8px;display:flex;align-items:center;gap:6px}
-.footer-brand p{color:var(--muted);font-size:0.82rem;line-height:1.6}
-.footer-col h5{color:white;font-size:0.85rem;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
-.footer-col a{display:block;color:var(--muted);font-size:0.82rem;padding:3px 0;transition:color .2s}
-.footer-col a:hover{color:white;text-decoration:none}
-.footer-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:20px;border-top:1px solid var(--border);font-size:0.78rem;color:var(--muted)}
-.footer-bottom a{color:var(--muted)}
-.footer-bottom a:hover{color:white}
-
-/* ===== RESPONSIVE ===== */
+.education{margin:60px 0}
+.education h2{text-align:center;font-size:1.8rem;margin-bottom:24px;color:white}
+.edu-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+.edu-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px}
+.edu-card h3{color:white;margin-bottom:8px;font-size:1.1rem}
+.edu-card p{color:var(--muted);font-size:0.9rem;line-height:1.6}
+.history{margin:40px 0}
+.history h3{margin-bottom:12px;color:white}
+.history-item{display:flex;justify-content:space-between;align-items:center;background:var(--card);padding:12px 16px;border-radius:8px;margin-bottom:6px;font-size:0.85rem}
+.history-url{color:white;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px}
+.history-score{font-weight:700}
+.history-date{color:var(--muted);font-size:0.75rem}
+.badge-section{display:none;margin-top:20px;background:var(--bg);padding:20px;border-radius:10px;border:1px solid var(--green)}
+.badge-section.show{display:block}
+.badge-section h3{color:var(--green);margin-bottom:8px}
+.badge-code{background:#1a1a2e;padding:12px;border-radius:6px;font-family:monospace;font-size:0.75rem;overflow-x:auto;color:var(--green);margin:8px 0}
+.copy-btn{font-size:0.75rem;padding:4px 10px;background:var(--green);color:white;border:none;border-radius:4px;cursor:pointer}
+/* Category sections */
+.category-group{background:var(--bg);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden}
+.category-header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;cursor:pointer;user-select:none;transition:0.2s}
+.category-header:hover{background:rgba(108,92,231,0.08)}
+.category-header h4{color:white;font-size:0.95rem;display:flex;align-items:center;gap:8px}
+.category-header .cat-count{font-size:0.75rem;padding:2px 8px;border-radius:10px;background:rgba(231,76,60,0.15);color:var(--red)}
+.category-header .chevron{transition:transform 0.3s;color:var(--muted);font-size:0.8rem}
+.category-header.open .chevron{transform:rotate(180deg)}
+.category-body{max-height:0;overflow:hidden;transition:max-height 0.4s ease}
+.category-body.open{max-height:5000px}
+.category-body-inner{padding:0 18px 16px}
+/* Compare section */
+.compare-section{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;margin:0 auto 40px;max-width:700px}
+.compare-section h2{text-align:center;margin-bottom:16px;font-size:1.3rem;color:white}
+.compare-form{display:flex;flex-direction:column;gap:10px}
+.compare-row{display:flex;gap:10px}
+.compare-row input{flex:1;padding:12px 16px;border-radius:10px;border:1px solid var(--border);background:#1a1a2e;color:white;font-size:0.95rem;outline:none}
+.compare-row input:focus{border-color:var(--accent)}
+.compare-btn{padding:12px 24px;background:linear-gradient(135deg,var(--accent),#a29bfe);color:white;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:0.95rem}
+.compare-btn:hover{opacity:0.9}
+.compare-btn:disabled{opacity:0.5;cursor:not-allowed}
+.compare-results{display:none;margin-top:24px}.compare-results.show{display:block}
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.compare-card{background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:20px;text-align:center;position:relative}
+.compare-card.winner{border-color:var(--green)}
+.compare-card .winner-badge{display:none;position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--green);color:white;padding:3px 14px;border-radius:12px;font-size:0.75rem;font-weight:700}
+.compare-card.winner .winner-badge{display:block}
+.compare-card .comp-url{font-size:0.8rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:8px}
+.compare-card .comp-score{font-size:2.5rem;font-weight:800;margin:8px 0}
+.compare-card .comp-detail{font-size:0.8rem;color:var(--muted)}
+/* Recent scans */
+.recent-scans{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;margin:0 auto 40px;max-width:700px;display:none}
+.recent-scans.show{display:block}
+.recent-scans h3{color:white;margin-bottom:12px;font-size:1.1rem}
+.recent-item{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:0.2s}
+.recent-item:hover{border-left:3px solid var(--accent);padding-left:11px}
+.recent-item .ri-url{color:white;font-weight:500;font-size:0.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px}
+.recent-item .ri-score{font-weight:700;font-size:0.9rem}
+.recent-item .ri-date{font-size:0.7rem;color:var(--muted)}
+.recent-item .ri-trend{font-size:0.7rem;margin-left:6px}
+/* Share badge */
+.share-badge{display:none;margin-top:16px;background:linear-gradient(135deg,rgba(0,184,148,0.1),rgba(108,92,231,0.1));border:1px solid var(--green);border-radius:12px;padding:20px}
+.share-badge.show{display:block}
+.share-badge h3{color:var(--green);margin-bottom:8px;font-size:1rem}
+.share-badge p{font-size:0.8rem;color:var(--muted);margin-bottom:10px}
+.share-badge-preview{text-align:center;margin:12px 0}
+.share-snippet{background:#1a1a2e;padding:12px;border-radius:8px;font-family:monospace;font-size:0.72rem;color:var(--green);overflow-x:auto;margin:8px 0;white-space:pre-wrap;word-break:break-all}
+.share-btns{display:flex;gap:8px;flex-wrap:wrap}
+.share-btns button{padding:6px 14px;border-radius:6px;border:none;font-size:0.8rem;font-weight:600;cursor:pointer;transition:0.2s}
+.share-btns .copy-embed{background:var(--green);color:white}
+.share-btns .copy-embed:hover{opacity:0.85}
+.share-btns .share-twitter{background:#1DA1F2;color:white}
+.share-btns .share-linkedin{background:#0077B5;color:white}
+footer{text-align:center;padding:40px 0;color:var(--muted);font-size:0.85rem;border-top:1px solid var(--border);margin-top:60px}
+.loading{display:none;text-align:center;margin:24px 0}.loading.show{display:block}
+.spinner{display:inline-block;width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-msg{display:none;text-align:center;padding:16px;background:rgba(231,76,60,0.1);border:1px solid var(--red);border-radius:10px;color:var(--red);margin:16px 0}
+.error-msg.show{display:block}
+/* Fix Priority List */
+.fix-priority{margin-top:24px;background:linear-gradient(135deg,rgba(108,92,231,0.08),rgba(0,184,148,0.08));border:1px solid var(--accent);border-radius:14px;padding:24px}
+.fix-priority h3{color:white;font-size:1.15rem;margin-bottom:4px}
+.fix-priority .fp-sub{color:var(--muted);font-size:0.82rem;margin-bottom:16px}
+.fix-item{background:var(--card);border-radius:10px;padding:16px;margin-bottom:10px;border-left:4px solid var(--accent)}
+.fix-item.critical{border-left-color:var(--red)}.fix-item.serious{border-left-color:var(--orange)}.fix-item.moderate{border-left-color:var(--yellow)}
+.fix-item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.fix-item-name{font-weight:700;color:white;font-size:0.95rem}
+.fix-item-impact{font-size:0.7rem;padding:3px 8px;border-radius:4px;font-weight:700;text-transform:uppercase}
+.fix-steps{margin:0;padding:0 0 0 20px;font-size:0.84rem;color:var(--text)}
+.fix-steps li{margin-bottom:6px;line-height:1.5}
+.fix-steps code{background:#1a1a2e;padding:2px 6px;border-radius:4px;font-size:0.78rem;color:var(--accent2)}
+.fix-item-points{font-size:0.78rem;color:var(--green);margin-top:8px;font-weight:600}
+/* Rescan */
+.rescan-section{margin-top:16px;text-align:center}
+.rescan-btn{padding:12px 28px;background:linear-gradient(135deg,var(--green),#00cec9);color:white;border:none;border-radius:10px;font-weight:700;font-size:1rem;cursor:pointer;transition:0.2s}
+.rescan-btn:hover{opacity:0.9;transform:scale(1.02)}
+.rescan-btn:disabled{opacity:0.5;cursor:not-allowed}
+.score-change{display:none;font-size:1.4rem;font-weight:800;margin:12px 0;animation:fadeIn 0.5s}
+.score-change.show{display:block}
+.score-change.positive{color:var(--green)}.score-change.negative{color:var(--red)}.score-change.neutral{color:var(--muted)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+/* Email report */
+.email-report{margin-top:16px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+.email-report h3{color:white;font-size:1rem;margin-bottom:4px}
+.email-report .er-sub{color:var(--muted);font-size:0.82rem;margin-bottom:12px}
+.email-report-form{display:flex;gap:10px}
+.email-report-form input{flex:1;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:#1a1a2e;color:white;font-size:0.9rem;outline:none}
+.email-report-form input:focus{border-color:var(--accent)}
+.email-report-form button{padding:10px 20px;background:var(--accent);color:white;border:none;border-radius:8px;font-weight:700;cursor:pointer;white-space:nowrap}
+.email-report-form button:hover{opacity:0.9}
+.email-report-msg{margin-top:8px;font-size:0.85rem;display:none}
+.email-report-msg.show{display:block}
+/* API teaser */
+.api-teaser{margin:40px 0;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;position:relative;overflow:hidden}
+.api-teaser::before{content:'PRO';position:absolute;top:16px;right:16px;background:var(--accent);color:white;padding:4px 12px;border-radius:12px;font-size:0.7rem;font-weight:700}
+.api-teaser h2{color:white;font-size:1.4rem;margin-bottom:4px}
+.api-teaser .at-sub{color:var(--muted);font-size:0.88rem;margin-bottom:20px}
+.api-teaser pre{background:#0d0d15;border:1px solid var(--border);border-radius:10px;padding:16px;overflow-x:auto;font-size:0.8rem;color:var(--green);line-height:1.6;margin-bottom:12px}
+.api-teaser .at-label{font-size:0.75rem;color:var(--muted);text-transform:uppercase;font-weight:600;margin-bottom:6px}
+.api-teaser .at-cta{display:inline-block;margin-top:12px;padding:10px 24px;background:var(--accent);color:white;border-radius:8px;font-weight:700;font-size:0.9rem;text-decoration:none;cursor:pointer;border:none}
+.api-teaser .at-cta:hover{background:var(--accent2)}
 @media(max-width:768px){
   .hero h1{font-size:2rem}
-  .hero p{font-size:1rem}
-  .trust-bar{gap:16px}
-  .trust-item{font-size:0.78rem}
-  .scanner{padding:20px;margin-bottom:36px}
-  .scanner-form{flex-direction:column}
-  .scanner-btn{padding:14px}
-  .score-circle{width:130px;height:130px}
-  .score-circle svg{width:130px;height:130px}
-  .score-circle .score-num{font-size:2.2rem}
-  .stats-row{grid-template-columns:repeat(2,1fr);gap:8px}
-  .stat{padding:12px 6px}
-  .stat-num{font-size:1.3rem}
-  .action-btns{gap:6px}
-  .action-btn{padding:8px 12px;font-size:0.78rem;flex:1;min-width:calc(50% - 6px);text-align:center}
-  .issue-name{font-size:0.82rem}
-  .testimonials{grid-template-columns:1fr}
-  .urgency{padding:28px 20px}
+  .pricing,.edu-grid{grid-template-columns:1fr}
   .urgency-stats{grid-template-columns:1fr}
-  .urgency-stat .num{font-size:1.8rem}
-  .comp-table{font-size:0.75rem;display:block;overflow-x:auto}
-  .comp-table th,.comp-table td{padding:8px 6px;white-space:nowrap}
-  .wcag-principles{grid-template-columns:1fr}
-  .seo-article{padding:20px}
-  .pricing{grid-template-columns:1fr}
-  .price-card.featured{transform:none}
-  .footer-grid{grid-template-columns:1fr 1fr;gap:24px}
-  .footer-bottom{flex-direction:column;gap:8px;text-align:center}
-  .nav-links{gap:12px;font-size:0.8rem}
-  .monitor-form{flex-direction:column}
-  .history-item{flex-wrap:wrap;gap:6px}
-  .history-url{max-width:100%;flex-basis:100%}
-  .edu-grid{grid-template-columns:1fr}
-}
-
-@media(max-width:480px){
-  .container{padding:0 14px}
-  .hero h1{font-size:1.65rem}
-  .hero-badge{font-size:0.7rem;padding:5px 12px}
-  .trust-bar{flex-direction:column;gap:8px;align-items:center}
   .stats-row{grid-template-columns:repeat(2,1fr)}
-  .footer-grid{grid-template-columns:1fr}
-  .nav-links{display:none}
+  .scanner-form{flex-direction:column}
+  .comp-table{font-size:0.8rem}
+  .monitor-form{flex-direction:column}
+  .email-report-form{flex-direction:column}
+  .compare-row{flex-direction:column}
+  .compare-grid{grid-template-columns:1fr}
 }
-
-/* ===== EDUCATION ===== */
-.education{margin:48px 0}
-.education h2{text-align:center;font-size:1.7rem;margin-bottom:24px;color:white}
-.edu-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
-.edu-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px}
-.edu-card h3{color:white;margin-bottom:8px;font-size:1rem}
-.edu-card p{color:var(--muted);font-size:0.88rem;line-height:1.6}
 </style>
 </head>
 <body>
 <div class="container">
-  <!-- Navigation -->
-  <nav class="nav">
-    <div class="nav-brand">🛡️ ComplianceShield</div>
-    <div class="nav-links">
-      <a href="#scanner">Scanner</a>
-      <a href="#ada-guide">ADA Guide</a>
-      <a href="#pricing-section">Pricing</a>
-      <a href="https://github.com/beepboop-dev/gamma-project">GitHub</a>
-    </div>
-  </nav>
-
-  <!-- Hero -->
   <div class="hero">
+    <div class="shield-icon">🛡️</div>
     <div class="hero-badge">⚠️ 4,605 ADA lawsuits filed in 2025 — Is your website next?</div>
-    <h1>Scan Any Website for ADA Compliance in Seconds</h1>
-    <p>23 automated WCAG 2.1 checks. Actionable fix instructions. PDF reports. No signup required. Free forever.</p>
+    <h1>ComplianceShield</h1>
+    <p>Scan any website for ADA & WCAG 2.1 accessibility compliance in seconds. Get detailed reports, fix issues, and protect your business from lawsuits.</p>
   </div>
 
-  <!-- Trust bar -->
-  <div class="trust-bar">
-    <div class="trust-item">🛡️ <strong>2,400+</strong> sites scanned</div>
-    <div class="trust-item">⭐ <strong>23</strong> WCAG checks</div>
-    <div class="trust-item">📄 <strong>Free</strong> PDF reports</div>
-    <div class="trust-item">⚡ Results in <strong>seconds</strong></div>
+  <!-- Recent Scans from localStorage -->
+  <div class="recent-scans" id="recentScans">
+    <h3>📋 Your Recent Scans</h3>
+    <div id="recentList"></div>
+    <p style="font-size:0.7rem;color:var(--muted);margin-top:8px">Stored locally in your browser • No account needed</p>
   </div>
 
-  <!-- Scanner -->
   <div class="scanner" id="scanner">
     <h2>🔍 Free Accessibility Scan</h2>
     <div class="scanner-form">
-      <input type="url" class="scanner-input" id="urlInput" placeholder="Enter any website URL (e.g., example.com)" autocomplete="url" spellcheck="false" />
-      <button class="scanner-btn" id="scanBtn" onclick="runScan()">Scan Now →</button>
+      <input type="text" class="scanner-input" id="urlInput" placeholder="Enter any website URL (e.g., example.com)" />
+      <button class="scanner-btn" id="scanBtn" onclick="runScan()">Scan Now</button>
     </div>
-    <div class="scanner-hint">Free unlimited scans • No signup required • 23 WCAG checks</div>
+    <div class="scanner-hint">Free unlimited scans • No signup required • 23 WCAG checks • Results in seconds</div>
 
     <div class="loading" id="loading">
       <div class="spinner"></div>
-      <div class="loading-steps">
-        <div class="loading-step active" id="step1">Connecting to website...</div>
-        <div class="loading-step" id="step2">Analyzing HTML structure...</div>
-        <div class="loading-step" id="step3">Running 23 WCAG checks...</div>
-        <div class="loading-step" id="step4">Generating report...</div>
-      </div>
+      <p style="margin-top:12px;color:var(--muted)">Scanning for accessibility issues...</p>
     </div>
-
-    <div class="error-msg" id="errorMsg">
-      <span class="error-icon">⚠️</span>
-      <div class="error-content">
-        <h4 id="errorTitle">Scan Failed</h4>
-        <p id="errorText"></p>
-        <ul class="error-suggestions" id="errorSuggestions"></ul>
-      </div>
-    </div>
+    <div class="error-msg" id="errorMsg"></div>
 
     <div class="results" id="results">
-      <!-- Animated Score Circle -->
-      <div class="score-circle-wrap">
-        <div class="score-circle">
-          <svg viewBox="0 0 160 160">
-            <circle class="bg" cx="80" cy="80" r="70"/>
-            <circle class="fg" id="scoreArc" cx="80" cy="80" r="70" stroke-dasharray="439.82" stroke-dashoffset="439.82"/>
-          </svg>
-          <div class="score-text">
-            <div class="score-num" id="scoreNum">0</div>
-            <div class="score-label">out of 100</div>
-          </div>
-        </div>
+      <div class="score-ring">
+        <div class="score-number" id="scoreNum">0</div>
+        <div class="score-label">Accessibility Score</div>
       </div>
-
       <div class="compliance-status" id="complianceStatus"></div>
 
       <div class="stats-row">
@@ -1333,10 +1259,35 @@ a{color:var(--accent2);text-decoration:none}a:hover{text-decoration:underline}
       </div>
 
       <div class="action-btns">
-        <button class="action-btn" onclick="downloadPDF()">📄 PDF Report</button>
-        <button class="action-btn" id="badgeBtn" onclick="generateBadge()" style="display:none">🏅 Get Badge</button>
-        <button class="action-btn" onclick="showHistory()">📊 History</button>
-        <button class="action-btn" onclick="loadTrend()">📈 Trend</button>
+        <button class="action-btn" onclick="downloadPDF()">📄 Download PDF Report</button>
+        <button class="action-btn" id="badgeBtn" onclick="generateBadge()" style="display:none">🏅 Get Compliance Badge</button>
+        <button class="action-btn" onclick="showHistory()">📊 Scan History</button>
+        <button class="action-btn" onclick="loadTrend()">📈 Score Trend</button>
+      </div>
+
+      <!-- Email Report -->
+      <div class="email-report" id="emailReport">
+        <h3>📧 Email Me This Report</h3>
+        <p class="er-sub">Get a formatted copy of this scan report delivered to your inbox — great for sharing with your team.</p>
+        <div class="email-report-form">
+          <input type="email" id="reportEmail" placeholder="your@email.com" />
+          <button onclick="sendEmailReport()">Send Report</button>
+        </div>
+        <div class="email-report-msg" id="emailReportMsg"></div>
+      </div>
+
+      <!-- Fix Priority List -->
+      <div class="fix-priority" id="fixPriority" style="display:none">
+        <h3>🎯 Fix These First</h3>
+        <p class="fp-sub">The top 3 highest-impact issues to fix right now. Tackle these and you'll see the biggest improvement.</p>
+        <div id="fixList"></div>
+      </div>
+
+      <!-- Rescan -->
+      <div class="rescan-section" id="rescanSection" style="display:none">
+        <div class="score-change" id="scoreChange"></div>
+        <button class="rescan-btn" id="rescanBtn" onclick="runRescan()">🔄 Rescan — See Your Improvement</button>
+        <p style="font-size:0.78rem;color:var(--muted);margin-top:6px">Fixed some issues? Rescan to see your updated score.</p>
       </div>
 
       <div class="badge-section" id="badgeSection">
@@ -1347,6 +1298,7 @@ a{color:var(--accent2);text-decoration:none}a:hover{text-decoration:underline}
         <button class="copy-btn" onclick="copyBadge()">Copy Embed Code</button>
       </div>
 
+      <!-- Trend Chart -->
       <div class="trend-section" id="trendSection">
         <h3>📈 Score Trend Over Time</h3>
         <div class="trend-chart" id="trendChart"></div>
@@ -1354,9 +1306,10 @@ a{color:var(--accent2);text-decoration:none}a:hover{text-decoration:underline}
         <div class="trend-summary" id="trendSummary"></div>
       </div>
 
+      <!-- Monitor Registration -->
       <div class="monitor-section">
         <h3>🔔 Set Up Weekly Monitoring</h3>
-        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:12px">Get automated scan results delivered to your inbox every week.</p>
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:12px">Get automated scan results delivered to your inbox every week. Track your accessibility score over time.</p>
         <div class="monitor-form">
           <input type="email" id="monitorEmail" placeholder="your@email.com" />
           <button onclick="registerMonitor()">📧 Start Monitoring</button>
@@ -1364,54 +1317,54 @@ a{color:var(--accent2);text-decoration:none}a:hover{text-decoration:underline}
         <div class="monitor-msg" id="monitorMsg"></div>
       </div>
 
-      <!-- Issues sorted by severity with expandable cards -->
-      <div class="issues-list" id="issuesList"></div>
+      <!-- Share Badge (score 80+) -->
+      <div class="share-badge" id="shareBadge">
+        <h3>🏆 Your Site Passed! Share Your Badge</h3>
+        <p>Embed this badge on your website to show visitors your commitment to accessibility. Every badge links back to ComplianceShield.</p>
+        <div class="share-badge-preview" id="shareBadgePreview"></div>
+        <div class="share-snippet" id="shareSnippet"></div>
+        <div class="share-btns">
+          <button class="copy-embed" onclick="copyShareBadge()">📋 Copy HTML Snippet</button>
+          <button class="share-twitter" onclick="shareTwitter()">🐦 Share on X</button>
+          <button class="share-linkedin" onclick="shareLinkedIn()">💼 Share on LinkedIn</button>
+        </div>
+      </div>
 
+      <!-- Categorized Issues -->
+      <div class="issues-list" id="issuesList"></div>
       <div class="passes-section" id="passesSection">
-        <h3>✅ Checks Passed</h3>
+        <h3 style="color:var(--green);margin-bottom:10px">✅ Checks Passed</h3>
         <div id="passesList"></div>
       </div>
     </div>
 
-    <div class="history" id="historySection">
+    <div class="history" id="historySection" style="display:none">
       <h3>📊 Recent Scan History</h3>
       <div id="historyList"></div>
     </div>
   </div>
 
-  <!-- Social Proof / Testimonials -->
-  <div class="social-proof">
-    <h2>Trusted by Compliance Teams Everywhere</h2>
-    <p class="subtitle">Join 2,400+ businesses using ComplianceShield to stay ADA compliant</p>
-    <div class="testimonials">
-      <div class="testimonial">
-        <div class="testimonial-stars">★★★★★</div>
-        <div class="testimonial-text">"We were hit with an ADA demand letter and needed to fix our site fast. ComplianceShield identified every issue in seconds and gave us exact code fixes. Saved us thousands in consultant fees."</div>
-        <div class="testimonial-author">
-          <div class="testimonial-avatar">MR</div>
-          <div class="testimonial-info"><div class="name">Maria Rodriguez</div><div class="role">Compliance Officer, TechFlow Inc.</div></div>
-        </div>
+  <!-- Competitor Comparison -->
+  <div class="compare-section" id="compareSection">
+    <h2>⚔️ Compare With Competitor</h2>
+    <p style="text-align:center;color:var(--muted);font-size:0.85rem;margin-bottom:16px">Scan two websites side by side to see which is more accessible</p>
+    <div class="compare-form">
+      <div class="compare-row">
+        <input type="text" id="compareUrl1" placeholder="Your website (e.g., yoursite.com)" />
+        <input type="text" id="compareUrl2" placeholder="Competitor (e.g., competitor.com)" />
       </div>
-      <div class="testimonial">
-        <div class="testimonial-stars">★★★★★</div>
-        <div class="testimonial-text">"As a small business owner, I couldn't afford a $5,000 accessibility audit. ComplianceShield does it for free with actionable fixes. I embed the badge on my site — customers notice."</div>
-        <div class="testimonial-author">
-          <div class="testimonial-avatar">JT</div>
-          <div class="testimonial-info"><div class="name">James Thompson</div><div class="role">Owner, Riverside Bakery</div></div>
-        </div>
-      </div>
-      <div class="testimonial">
-        <div class="testimonial-stars">★★★★★</div>
-        <div class="testimonial-text">"We scan every client site before launch now. The PDF reports look professional enough to include in our deliverables. The weekly monitoring catches regressions before they become problems."</div>
-        <div class="testimonial-author">
-          <div class="testimonial-avatar">SK</div>
-          <div class="testimonial-info"><div class="name">Sarah Kim</div><div class="role">Lead Developer, Digital Pixel Agency</div></div>
-        </div>
-      </div>
+      <button class="compare-btn" id="compareBtn" onclick="runCompare()">⚔️ Compare Accessibility</button>
+    </div>
+    <div class="loading" id="compareLoading">
+      <div class="spinner"></div>
+      <p style="margin-top:10px;color:var(--muted);font-size:0.85rem">Scanning both sites...</p>
+    </div>
+    <div class="error-msg" id="compareError"></div>
+    <div class="compare-results" id="compareResults">
+      <div class="compare-grid" id="compareGrid"></div>
     </div>
   </div>
 
-  <!-- Urgency Section -->
   <div class="urgency">
     <h2>⚖️ ADA Web Accessibility Lawsuits Are Surging</h2>
     <div class="urgency-stats">
@@ -1419,12 +1372,11 @@ a{color:var(--accent2);text-decoration:none}a:hover{text-decoration:underline}
       <div class="urgency-stat"><div class="num">$50K+</div><div class="label">Average settlement cost</div></div>
       <div class="urgency-stat"><div class="num">98%</div><div class="label">of websites fail basic WCAG checks</div></div>
     </div>
-    <p>Under the ADA, websites are "places of public accommodation." The DOJ finalized rules in 2024 requiring WCAG 2.1 Level AA — and private sector enforcement is accelerating.</p>
-    <p style="margin-top:10px"><strong style="color:var(--red)">Plaintiffs' firms are actively scanning websites for violations.</strong> Average settlement: $25,000–$75,000.</p>
-    <p style="margin-top:14px"><a href="#scanner" style="color:var(--accent2);font-weight:700;font-size:1.05rem">→ Scan your website now — it's free</a></p>
+    <p>Under the Americans with Disabilities Act (ADA), websites are considered "places of public accommodation." Courts have consistently ruled that inaccessible websites violate Title III of the ADA. The Department of Justice finalized rules in 2024 requiring state and local government websites to meet WCAG 2.1 Level AA — and private sector enforcement is accelerating.</p>
+    <p style="margin-top:12px"><strong style="color:var(--red)">Plaintiffs' firms are actively scanning websites for violations.</strong> The average small business pays $25,000–$75,000 to settle. Don't wait until you get served.</p>
+    <p style="margin-top:16px"><a href="#scanner" style="color:var(--accent2);font-weight:700;font-size:1.1rem">→ Scan your website now — it's free</a></p>
   </div>
 
-  <!-- Comparison Table -->
   <div class="comparison">
     <h2>Why ComplianceShield?</h2>
     <table class="comp-table">
@@ -1441,104 +1393,52 @@ a{color:var(--accent2);text-decoration:none}a:hover{text-decoration:underline}
     </table>
   </div>
 
-  <!-- SEO Content: What is ADA Compliance -->
-  <div class="seo-section" id="ada-guide">
-    <h2>📚 The Complete Guide to Web Accessibility</h2>
-
-    <article class="seo-article">
-      <h3>🏛️ What is ADA Compliance for Websites?</h3>
-      <p>The <strong>Americans with Disabilities Act (ADA)</strong>, signed into law in 1990, prohibits discrimination against individuals with disabilities. While the original law focused on physical spaces, courts and the Department of Justice have consistently interpreted it to include websites and digital content.</p>
-      <p>In April 2024, the DOJ published its final rule under Title II of the ADA, explicitly requiring state and local government websites to conform to <strong>WCAG 2.1 Level AA</strong>. While this rule directly applies to government entities, it has set a clear benchmark that private sector courts and enforcement agencies follow.</p>
-
-      <h4>Who Needs to Comply?</h4>
-      <p>Under Title III of the ADA, any business that operates a "place of public accommodation" must make their services accessible — and courts have ruled that websites qualify. This includes:</p>
-      <ul>
-        <li><strong>E-commerce stores</strong> — online shopping must be navigable by screen readers</li>
-        <li><strong>Healthcare providers</strong> — patient portals, appointment booking, medical information</li>
-        <li><strong>Financial services</strong> — banking, insurance, and investment platforms</li>
-        <li><strong>Restaurants & hospitality</strong> — online menus, reservations, hotel booking</li>
-        <li><strong>Educational institutions</strong> — course materials, registration systems, LMS platforms</li>
-        <li><strong>Any business with a website</strong> — if you serve the public, accessibility applies</li>
-      </ul>
-
-      <div class="highlight-box">
-        <p>💡 <strong>Key fact:</strong> Over 4,600 ADA website accessibility lawsuits were filed in 2025 alone. The average settlement ranges from $25,000 to $75,000 — far more than the cost of making your site accessible. <a href="#scanner">Scan your site now →</a></p>
-      </div>
-
-      <h4>What Happens If You Don't Comply?</h4>
-      <p>Non-compliant websites face several risks:</p>
-      <ol>
-        <li><strong>Demand letters</strong> from plaintiffs' attorneys citing specific violations</li>
-        <li><strong>Federal lawsuits</strong> under Title III of the ADA</li>
-        <li><strong>State lawsuits</strong> under state-level disability discrimination laws (e.g., California's Unruh Act, which allows statutory damages of $4,000 per violation per visit)</li>
-        <li><strong>Settlements</strong> typically ranging from $5,000 for small businesses to $100,000+ for larger companies</li>
-        <li><strong>Ongoing compliance obligations</strong> including monitoring and remediation agreements</li>
-      </ol>
-    </article>
-
-    <article class="seo-article">
-      <h3>📋 WCAG 2.1 Guidelines — What You Need to Know</h3>
-      <p>The <strong>Web Content Accessibility Guidelines (WCAG) 2.1</strong>, published by the World Wide Web Consortium (W3C), are the internationally recognized standard for web accessibility. They are organized around four core principles, often remembered by the acronym <strong>POUR</strong>:</p>
-
-      <div class="wcag-principles">
-        <div class="wcag-principle">
-          <h5>👁️ Perceivable</h5>
-          <p>Information must be presentable in ways all users can perceive. This includes alt text for images, captions for videos, and sufficient color contrast.</p>
-        </div>
-        <div class="wcag-principle">
-          <h5>⌨️ Operable</h5>
-          <p>UI components must be operable by all users. Sites must be fully keyboard-navigable, allow enough time for interaction, and avoid content that causes seizures.</p>
-        </div>
-        <div class="wcag-principle">
-          <h5>📖 Understandable</h5>
-          <p>Content must be readable and predictable. Pages need proper language attributes, consistent navigation, and helpful error messages on forms.</p>
-        </div>
-        <div class="wcag-principle">
-          <h5>🔧 Robust</h5>
-          <p>Content must work reliably across assistive technologies. This means valid HTML, proper ARIA attributes, and compatible code.</p>
-        </div>
-      </div>
-
-      <h4>WCAG Conformance Levels</h4>
-      <p>WCAG defines three levels of conformance:</p>
-      <ul>
-        <li><strong>Level A</strong> — The minimum. Addresses the most critical barriers (e.g., alt text, keyboard access, page titles). 30 success criteria.</li>
-        <li><strong>Level AA</strong> — The standard target for legal compliance. Includes Level A plus additional criteria like color contrast (4.5:1 ratio), consistent navigation, and error prevention. ~20 additional criteria.</li>
-        <li><strong>Level AAA</strong> — The highest level. Includes enhanced contrast (7:1), sign language for audio, and more. Aspirational for most sites.</li>
-      </ul>
-
-      <div class="highlight-box">
-        <p>🎯 <strong>Target Level AA.</strong> This is what the DOJ requires, courts reference, and what ComplianceShield tests against. Our 23 automated checks cover the most impactful Level A and AA success criteria.</p>
-      </div>
-
-      <h4>Common WCAG Failures (What ComplianceShield Checks)</h4>
-      <p>Based on the <a href="https://webaim.org/projects/million/" target="_blank">WebAIM Million</a> annual study, the most common accessibility errors are:</p>
-      <ol>
-        <li><strong>Low contrast text</strong> (83% of pages) — Text doesn't meet 4.5:1 ratio</li>
-        <li><strong>Missing alt text</strong> (58%) — Images without alternative descriptions</li>
-        <li><strong>Empty links</strong> (50%) — Links with no accessible text</li>
-        <li><strong>Missing form labels</strong> (46%) — Form inputs without associated labels</li>
-        <li><strong>Empty buttons</strong> (27%) — Buttons with no accessible name</li>
-        <li><strong>Missing page language</strong> (19%) — No lang attribute on &lt;html&gt;</li>
-      </ol>
-      <p>ComplianceShield detects all of these plus 17 additional checks including keyboard traps, heading structure, ARIA landmarks, link text quality, and more.</p>
-    </article>
-  </div>
-
-  <!-- Education Cards -->
   <div class="education">
-    <h2>Quick Reference</h2>
+    <h2>📚 Understanding Web Accessibility & ADA Compliance</h2>
     <div class="edu-grid">
-      <div class="edu-card"><h3>⚖️ Recent Notable Lawsuits</h3><p><strong>Domino's v. Robles (2019):</strong> Supreme Court let stand a ruling requiring website accessibility. <strong>2025:</strong> 400+ lawsuits/month targeting e-commerce, healthcare, and small businesses.</p></div>
-      <div class="edu-card"><h3>🎯 Who's Most at Risk?</h3><p>Any business with a website — especially <strong>e-commerce, healthcare, financial services, restaurants, and hospitality</strong>. Serial plaintiffs target sites with obvious violations.</p></div>
-      <div class="edu-card"><h3>🔧 How to Fix Issues</h3><p>ComplianceShield provides <strong>specific, developer-ready fix instructions</strong> for every issue found — with code examples. Most fixes take minutes, not hours.</p></div>
-      <div class="edu-card"><h3>🏅 Prove Your Compliance</h3><p>Generate a <strong>verifiable compliance badge</strong> for your website. Show customers and partners your commitment to accessibility. Badge includes score and scan date.</p></div>
+      <div class="edu-card"><h3>🏛️ What is ADA Compliance?</h3><p>The Americans with Disabilities Act (ADA) requires businesses to make their services accessible to people with disabilities. In 2024, the DOJ finalized rules explicitly extending this to websites, requiring WCAG 2.1 Level AA conformance.</p></div>
+      <div class="edu-card"><h3>📋 What is WCAG 2.1?</h3><p>The Web Content Accessibility Guidelines (WCAG) 2.1 are the international standard for web accessibility. Organized around 4 principles: <strong>Perceivable</strong>, <strong>Operable</strong>, <strong>Understandable</strong>, and <strong>Robust</strong>. Level AA includes 50+ specific success criteria.</p></div>
+      <div class="edu-card"><h3>⚖️ Recent Notable Lawsuits</h3><p><strong>Domino's v. Robles (2019):</strong> Supreme Court let stand a ruling that Domino's website must be accessible. <strong>2025:</strong> Over 400 lawsuits/month targeting e-commerce, healthcare, and small business websites.</p></div>
+      <div class="edu-card"><h3>🎯 Who's at Risk?</h3><p>Any business with a website — especially <strong>e-commerce, healthcare, financial services, restaurants, and hospitality</strong>. Serial plaintiffs target sites with obvious violations like missing alt text, poor contrast, and inaccessible forms.</p></div>
     </div>
   </div>
 
-  <!-- Pricing -->
-  <div class="pricing-section" id="pricing-section">
-    <h2>Plans & Pricing</h2>
+  <!-- API Access Teaser -->
+  <div class="api-teaser" id="apiTeaser">
+    <h2>👩‍💻 For Developers: API Access</h2>
+    <p class="at-sub">Integrate accessibility scanning into your CI/CD pipeline, agency workflow, or product. Full REST API with JSON responses.</p>
+    <div class="at-label">Sample Request</div>
+    <pre>curl -X POST https://gamma.abapture.ai/api/scan \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -d '{"url": "https://example.com"}'</pre>
+    <div class="at-label">Sample Response</div>
+    <pre>{
+  "score": 85,
+  "complianceLevel": "needs-improvement",
+  "summary": {
+    "totalChecks": 23,
+    "passed": 19,
+    "issues": 4,
+    "critical": 0,
+    "serious": 2
+  },
+  "issues": [
+    {
+      "id": "missing-alt",
+      "name": "Images missing alt text",
+      "impact": "critical",
+      "wcag": "WCAG 2.1 SC 1.1.1",
+      "count": 3
+    }
+  ]
+}</pre>
+    <p style="font-size:0.85rem;color:var(--muted)">API keys are available on the <strong style="color:var(--accent2)">Pro plan ($29/mo)</strong>. Perfect for agencies, dev shops, and SaaS products that need programmatic scanning.</p>
+    <button class="at-cta" onclick="checkout('pro')">Get API Access →</button>
+  </div>
+
+  <div class="section" id="pricing">
+    <h2 style="text-align:center;font-size:1.8rem;margin-bottom:24px;color:white">Plans & Pricing</h2>
     <div class="pricing">
       <div class="price-card">
         <h3>Free</h3><div class="subtitle">For quick checks</div>
@@ -1561,107 +1461,117 @@ a{color:var(--accent2);text-decoration:none}a:hover{text-decoration:underline}
     </div>
   </div>
 
-  <!-- Footer -->
-  <footer class="site-footer">
-    <div class="footer-grid">
-      <div class="footer-brand">
-        <h4>🛡️ ComplianceShield</h4>
-        <p>The fastest way to check your website for ADA & WCAG 2.1 accessibility compliance. Free unlimited scans with detailed fix instructions, PDF reports, and compliance badges.</p>
-      </div>
-      <div class="footer-col">
-        <h5>Product</h5>
-        <a href="#scanner">Free Scanner</a>
-        <a href="#pricing-section">Pricing</a>
-        <a href="/api/history">API</a>
-        <a href="https://github.com/beepboop-dev/gamma-project">GitHub</a>
-      </div>
-      <div class="footer-col">
-        <h5>Resources</h5>
-        <a href="#ada-guide">ADA Compliance Guide</a>
-        <a href="#ada-guide">WCAG 2.1 Guide</a>
-        <a href="/blog" onclick="event.preventDefault();alert('Blog coming soon!')">Blog</a>
-        <a href="https://www.w3.org/WAI/WCAG21/Understanding/" target="_blank">WCAG Reference</a>
-      </div>
-      <div class="footer-col">
-        <h5>Legal</h5>
-        <a href="/terms" onclick="event.preventDefault();alert('Terms of Service — Coming soon. ComplianceShield provides automated accessibility checks. It does not constitute legal advice.')">Terms of Service</a>
-        <a href="/privacy" onclick="event.preventDefault();alert('Privacy Policy — Coming soon. We do not store personal data. Scan results are stored anonymously for trend analysis.')">Privacy Policy</a>
-        <a href="mailto:support@abapture.ai">Contact</a>
-      </div>
-    </div>
-    <div class="footer-bottom">
-      <span>© 2026 ComplianceShield. All rights reserved.</span>
-      <span>Made with 🛡️ for a more accessible web</span>
-    </div>
+  <footer>
+    <p>🛡️ ComplianceShield — Protect your business from ADA lawsuits</p>
+    <p style="margin-top:8px">23 WCAG checks • Color contrast analysis • Keyboard navigation • Link quality • Score trends</p>
+    <p style="margin-top:8px">Built with care • <a href="https://github.com/beepboop-dev/gamma-project">GitHub</a></p>
   </footer>
 </div>
 
 <script>
 let currentScan = null;
-let loadingInterval = null;
 
-function showError(title, message, suggestions) {
-  const el = document.getElementById('errorMsg');
-  document.getElementById('errorTitle').textContent = title || 'Scan Failed';
-  document.getElementById('errorText').textContent = message;
-  const sugList = document.getElementById('errorSuggestions');
-  sugList.innerHTML = '';
-  if (suggestions && suggestions.length) {
-    suggestions.forEach(s => { const li = document.createElement('li'); li.textContent = s; sugList.appendChild(li); });
-  }
-  el.classList.add('show');
+// ===== localStorage scan history =====
+function getLocalScans() {
+  try { return JSON.parse(localStorage.getItem('cs_scans') || '[]'); } catch(e) { return []; }
 }
-
-function categorizeError(msg) {
-  const lower = msg.toLowerCase();
-  if (lower.includes('invalid url') || lower.includes('invalid website')) {
-    return { title: 'Invalid URL', message: msg, suggestions: ['Make sure the URL starts with http:// or https://', 'Check for typos in the domain name', 'Try entering just the domain (e.g., example.com)'] };
-  }
-  if (lower.includes('could not find') || lower.includes('enotfound') || lower.includes('getaddrinfo')) {
-    return { title: 'Website Not Found', message: 'We couldn\\'t find that website. The domain may not exist or DNS isn\\'t resolving.', suggestions: ['Double-check the spelling of the URL', 'Make sure the website is online', 'Try without www. or with www.'] };
-  }
-  if (lower.includes('timed out') || lower.includes('took too long')) {
-    return { title: 'Connection Timed Out', message: 'The website took too long to respond (>15s).', suggestions: ['The site may be experiencing high traffic', 'Try again in a few minutes', 'Check if the site loads in your browser'] };
-  }
-  if (lower.includes('connection refused')) {
-    return { title: 'Connection Refused', message: 'The website actively refused our connection.', suggestions: ['The site may be down for maintenance', 'It may be blocking automated scanners', 'Try again later'] };
-  }
-  if (lower.includes('ssl') || lower.includes('certificate')) {
-    return { title: 'SSL/TLS Error', message: 'There\\'s a problem with the website\\'s security certificate.', suggestions: ['The site may have an expired certificate', 'Try scanning with http:// instead of https://', 'Contact the website owner about the SSL issue'] };
-  }
-  if (lower.includes('too large')) {
-    return { title: 'Page Too Large', message: 'The webpage exceeds our 5MB scan limit.', suggestions: ['Try scanning a specific page instead of the homepage', 'The site may be serving very large HTML'] };
-  }
-  return { title: 'Scan Failed', message: msg, suggestions: ['Check that the URL is correct', 'Make sure the website is accessible', 'Try again in a moment'] };
+function saveLocalScan(scan) {
+  const scans = getLocalScans();
+  scans.unshift({ url: scan.url, score: scan.score, level: scan.complianceLevel, date: scan.scannedAt, id: scan.id, issues: scan.summary.issues });
+  if (scans.length > 50) scans.length = 50;
+  localStorage.setItem('cs_scans', JSON.stringify(scans));
+  renderRecentScans();
 }
-
-function animateLoadingSteps() {
-  const steps = ['step1','step2','step3','step4'];
-  let i = 0;
-  steps.forEach(s => document.getElementById(s).classList.remove('active'));
-  document.getElementById(steps[0]).classList.add('active');
-  loadingInterval = setInterval(() => {
-    i++;
-    if (i < steps.length) {
-      document.getElementById(steps[i]).classList.add('active');
+function renderRecentScans() {
+  const scans = getLocalScans();
+  const section = document.getElementById('recentScans');
+  const list = document.getElementById('recentList');
+  if (scans.length === 0) { section.classList.remove('show'); return; }
+  section.classList.add('show');
+  // Group by domain, show latest per domain + trend
+  const byDomain = {};
+  scans.forEach(s => {
+    try { const d = new URL(s.url).hostname; if (!byDomain[d]) byDomain[d] = []; byDomain[d].push(s); } catch(e) {}
+  });
+  const entries = Object.entries(byDomain).slice(0, 8);
+  list.innerHTML = entries.map(([domain, ds]) => {
+    const latest = ds[0];
+    const color = latest.score >= 80 ? 'var(--green)' : latest.score >= 50 ? 'var(--orange)' : 'var(--red)';
+    let trend = '';
+    if (ds.length >= 2) {
+      const diff = ds[0].score - ds[1].score;
+      if (diff > 0) trend = '<span class="ri-trend" style="color:var(--green)">▲+' + diff + '</span>';
+      else if (diff < 0) trend = '<span class="ri-trend" style="color:var(--red)">▼' + diff + '</span>';
+      else trend = '<span class="ri-trend" style="color:var(--muted)">—</span>';
     }
-  }, 2500);
+    return '<div class="recent-item" onclick="document.getElementById(\\'urlInput\\').value=\\'' + escapeHtml(latest.url) + '\\';runScan()">' +
+      '<span class="ri-url">' + escapeHtml(domain) + '</span>' +
+      '<span><span class="ri-score" style="color:' + color + '">' + latest.score + '/100</span>' + trend + '</span>' +
+      '<span class="ri-date">' + new Date(latest.date).toLocaleDateString() + '</span></div>';
+  }).join('');
+}
+// Render on load
+renderRecentScans();
+
+// ===== Issue Categories =====
+const ISSUE_CATEGORIES = {
+  'Images': { icon: '🖼️', rules: ['missing-alt', 'empty-alt'] },
+  'Forms': { icon: '📝', rules: ['missing-form-label'] },
+  'Navigation': { icon: '🧭', rules: ['empty-link', 'empty-button', 'no-skip-link', 'missing-landmark', 'tabindex-positive', 'generic-link-text'] },
+  'Content': { icon: '📄', rules: ['missing-lang', 'missing-title', 'missing-heading', 'skipped-heading', 'missing-table-header', 'meta-refresh', 'autoplay-media', 'low-contrast-text', 'inline-styles-text', 'color-contrast-inline'] },
+  'Keyboard': { icon: '⌨️', rules: ['keyboard-trap', 'missing-focus-style', 'missing-keyboard-access'] }
+};
+
+function categorizeIssues(issues) {
+  const cats = {};
+  Object.entries(ISSUE_CATEGORIES).forEach(([name, cat]) => { cats[name] = { ...cat, issues: [] }; });
+  cats['Other'] = { icon: '❓', rules: [], issues: [] };
+  issues.forEach(issue => {
+    let placed = false;
+    for (const [name, cat] of Object.entries(ISSUE_CATEGORIES)) {
+      if (cat.rules.includes(issue.id)) { cats[name].issues.push(issue); placed = true; break; }
+    }
+    if (!placed) cats['Other'].issues.push(issue);
+  });
+  return cats;
+}
+
+function renderCategorizedIssues(issues) {
+  const cats = categorizeIssues(issues);
+  return Object.entries(cats).filter(([,c]) => c.issues.length > 0).map(([name, cat]) => {
+    const totalCount = cat.issues.reduce((s,i) => s + i.count, 0);
+    const issuesHtml = cat.issues.map(issue => \`
+      <div class="issue-item \${issue.impact}">
+        <div class="issue-header">
+          <span class="issue-name">\${issue.name} (\${issue.count})</span>
+          <span class="issue-impact impact-\${issue.impact}">\${issue.impact}</span>
+        </div>
+        <div class="issue-wcag">📋 \${issue.wcag} — Level \${issue.level} (\${issue.principle})</div>
+        <div class="issue-desc">\${issue.description}</div>
+        \${issue.elements && issue.elements.length > 0 ? \`<div class="issue-elements">\${issue.elements.map(e => escapeHtml(e)).join('<br>')}</div>\` : ''}
+        <a href="\${issue.url}" target="_blank" class="issue-link">📖 WCAG Reference →</a>
+      </div>
+    \`).join('');
+    return \`<div class="category-group">
+      <div class="category-header" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
+        <h4>\${cat.icon} \${name} <span class="cat-count">\${cat.issues.length} issue\${cat.issues.length>1?'s':''} · \${totalCount} occurrence\${totalCount>1?'s':''}</span></h4>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="category-body"><div class="category-body-inner">\${issuesHtml}</div></div>
+    </div>\`;
+  }).join('');
 }
 
 async function runScan() {
-  const input = document.getElementById('urlInput');
-  const url = input.value.trim();
-  if (!url) { input.classList.add('input-error'); input.focus(); setTimeout(() => input.classList.remove('input-error'), 2000); return; }
-  input.classList.remove('input-error');
-
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url) { document.getElementById('urlInput').focus(); return; }
   document.getElementById('loading').classList.add('show');
   document.getElementById('results').classList.remove('show');
   document.getElementById('errorMsg').classList.remove('show');
-  document.getElementById('historySection').classList.remove('show');
+  document.getElementById('historySection').style.display = 'none';
   document.getElementById('badgeSection').classList.remove('show');
   document.getElementById('trendSection').classList.remove('show');
   document.getElementById('scanBtn').disabled = true;
-  animateLoadingSteps();
 
   try {
     const res = await fetch('/api/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
@@ -1670,49 +1580,18 @@ async function runScan() {
     currentScan = data;
     displayResults(data);
   } catch(e) {
-    const err = categorizeError(e.message);
-    showError(err.title, err.message, err.suggestions);
+    document.getElementById('errorMsg').textContent = e.message;
+    document.getElementById('errorMsg').classList.add('show');
   } finally {
-    clearInterval(loadingInterval);
     document.getElementById('loading').classList.remove('show');
     document.getElementById('scanBtn').disabled = false;
   }
 }
 
-function animateScore(target) {
-  const numEl = document.getElementById('scoreNum');
-  const arcEl = document.getElementById('scoreArc');
-  const circumference = 2 * Math.PI * 70; // 439.82
-  const color = target >= 80 ? 'var(--green)' : target >= 50 ? 'var(--orange)' : 'var(--red)';
-
-  arcEl.style.stroke = color;
-  numEl.style.color = color;
-
-  // Animate the arc
-  const offset = circumference - (target / 100) * circumference;
-  requestAnimationFrame(() => { arcEl.style.strokeDashoffset = offset; });
-
-  // Animate the number
-  let current = 0;
-  const duration = 1200;
-  const start = performance.now();
-  function tick(now) {
-    const elapsed = now - start;
-    const progress = Math.min(elapsed / duration, 1);
-    const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
-    current = Math.round(eased * target);
-    numEl.textContent = current;
-    if (progress < 1) requestAnimationFrame(tick);
-  }
-  requestAnimationFrame(tick);
-}
-
 function displayResults(data) {
-  // Reset arc
-  document.getElementById('scoreArc').style.strokeDashoffset = '439.82';
-
-  // Animate score after short delay
-  setTimeout(() => animateScore(data.score), 100);
+  const scoreEl = document.getElementById('scoreNum');
+  scoreEl.textContent = data.score;
+  scoreEl.style.color = data.score >= 80 ? 'var(--green)' : data.score >= 50 ? 'var(--orange)' : 'var(--red)';
 
   const statusEl = document.getElementById('complianceStatus');
   const statusMap = {
@@ -1731,50 +1610,35 @@ function displayResults(data) {
   document.getElementById('statWarnings').textContent = data.summary.warnings;
   document.getElementById('badgeBtn').style.display = data.complianceLevel !== 'non-compliant' ? 'inline-block' : 'none';
 
-  // Sort issues by severity
-  const severityOrder = { critical: 0, serious: 1, moderate: 2, minor: 3 };
-  const sortedIssues = [...data.issues].sort((a, b) => (severityOrder[a.impact] || 4) - (severityOrder[b.impact] || 4));
+  // Categorized issues
+  document.getElementById('issuesList').innerHTML = data.issues.length > 0
+    ? '<h3 style="color:var(--red);margin:20px 0 12px">🔍 Issues by Category</h3>' + renderCategorizedIssues(data.issues)
+    : '';
 
-  const issuesHtml = sortedIssues.length > 0 ? '<h3>🔍 Issues Found (' + sortedIssues.length + ')</h3>' + sortedIssues.map((issue, idx) => \`
-    <div class="issue-card" id="issue-\${idx}">
-      <div class="issue-card-header" onclick="toggleIssue(\${idx})">
-        <div class="issue-left">
-          <div class="issue-severity-dot \${issue.impact}"></div>
-          <span class="issue-name">\${issue.name}</span>
-        </div>
-        <div class="issue-right">
-          <span class="issue-count">\${issue.count} found</span>
-          <span class="issue-impact impact-\${issue.impact}">\${issue.impact}</span>
-          <span class="issue-chevron">▼</span>
-        </div>
-      </div>
-      <div class="issue-card-body">
-        <div class="issue-wcag">📋 \${issue.wcag} — Level \${issue.level} · \${issue.principle}</div>
-        <div class="issue-desc">\${issue.description}</div>
-        \${issue.fix ? \`<div class="issue-fix">💡 <strong>How to fix:</strong> \${issue.fix}</div>\` : ''}
-        \${issue.elements && issue.elements.length > 0 ? \`<div class="issue-elements">\${issue.elements.map(e => escapeHtml(e)).join('\\n')}</div>\` : ''}
-        <a href="\${issue.url}" target="_blank" class="issue-link">📖 WCAG Reference →</a>
-      </div>
-    </div>
-  \`).join('') : '';
-  document.getElementById('issuesList').innerHTML = issuesHtml;
+  // Save to localStorage
+  saveLocalScan(data);
 
-  // Auto-expand first critical issue
-  if (sortedIssues.length > 0) {
-    setTimeout(() => toggleIssue(0), 300);
+  // Share badge for score 80+
+  if (data.score >= 80) {
+    const badgeUrl = 'https://gamma.abapture.ai';
+    const snippet = \`<a href="\${badgeUrl}" target="_blank" title="ADA Compliant - Verified by ComplianceShield"><img src="\${badgeUrl}/api/badge/ada-shield.svg?score=\${data.score}" alt="ADA Compliant - Score \${data.score}/100" style="height:32px" /></a>\`;
+    document.getElementById('shareBadgePreview').innerHTML = \`<div style="background:#1a1a2e;display:inline-block;padding:12px 20px;border-radius:8px"><span style="font-size:1.5rem">🛡️</span> <strong style="color:var(--green)">ADA Compliant</strong> <span style="color:var(--muted)">·</span> <strong style="color:white">\${data.score}/100</strong></div>\`;
+    document.getElementById('shareSnippet').textContent = snippet;
+    document.getElementById('shareBadge').classList.add('show');
+  } else {
+    document.getElementById('shareBadge').classList.remove('show');
   }
 
-  const passesHtml = data.passes.map(p => \`<span class="pass-item">✓ \${p.name}</span>\`).join('');
+  const passesHtml = data.passes.map(p => \`<span class="pass-item">✓ \${p.name} (\${p.wcag})</span>\`).join('');
   document.getElementById('passesList').innerHTML = passesHtml;
+
+  // Fix priority list
+  renderFixPriority(data.issues);
+  
+  // Show rescan section
+  document.getElementById('rescanSection').style.display = data.issues.length > 0 ? 'block' : 'none';
+
   document.getElementById('results').classList.add('show');
-
-  // Smooth scroll to results
-  document.querySelector('.score-circle-wrap').scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
-function toggleIssue(idx) {
-  const card = document.getElementById('issue-' + idx);
-  if (card) card.classList.toggle('open');
 }
 
 function escapeHtml(str) { return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -1824,21 +1688,32 @@ async function loadTrend() {
     }
 
     const scans = data.scans;
-    chart.innerHTML = scans.map(s => {
-      const height = Math.max(4, s.score);
+    const maxScore = 100;
+    chart.innerHTML = scans.map((s, i) => {
+      const height = Math.max(4, (s.score / maxScore) * 100);
       const color = s.score >= 80 ? 'var(--green)' : s.score >= 50 ? 'var(--orange)' : 'var(--red)';
       const date = new Date(s.date).toLocaleDateString();
-      return \`<div class="trend-bar" style="height:\${height}%;background:\${color}"><div class="tooltip">\${date}<br>Score: \${s.score}/100<br>Issues: \${s.issues}</div></div>\`;
+      return \`<div class="trend-bar" style="height:\${height}%;background:\${color}">
+        <div class="tooltip">\${date}<br>Score: \${s.score}/100<br>Issues: \${s.issues}</div>
+      </div>\`;
     }).join('');
 
-    meta.innerHTML = \`<span>\${new Date(scans[0].date).toLocaleDateString()}</span><span>\${new Date(scans[scans.length-1].date).toLocaleDateString()}</span>\`;
+    if (scans.length > 0) {
+      meta.innerHTML = \`<span>\${new Date(scans[0].date).toLocaleDateString()}</span><span>\${new Date(scans[scans.length-1].date).toLocaleDateString()}</span>\`;
+    }
 
     if (data.trend) {
       const t = data.trend;
       const arrow = t.direction === 'improving' ? '📈' : t.direction === 'declining' ? '📉' : '➡️';
       const cls = t.direction === 'improving' ? 'trend-up' : t.direction === 'declining' ? 'trend-down' : 'trend-stable';
-      summary.innerHTML = \`<span class="\${cls}">\${arrow} \${t.direction.charAt(0).toUpperCase() + t.direction.slice(1)}</span> — Score changed by <strong class="\${cls}">\${t.scoreChange > 0 ? '+' : ''}\${t.scoreChange}</strong> pts over <strong>\${t.totalScans}</strong> scans.\`;
+      summary.innerHTML = \`
+        <span class="\${cls}">\${arrow} \${t.direction.charAt(0).toUpperCase() + t.direction.slice(1)}</span> —
+        Score changed by <strong class="\${cls}">\${t.scoreChange > 0 ? '+' : ''}\${t.scoreChange}</strong> points over
+        <strong>\${t.totalScans}</strong> scans.
+        Issues changed by <strong>\${t.issuesChange > 0 ? '+' : ''}\${t.issuesChange}</strong>.
+      \`;
     }
+
     section.classList.add('show');
   } catch(e) { console.error(e); }
 }
@@ -1848,13 +1723,17 @@ async function registerMonitor() {
   const email = document.getElementById('monitorEmail').value.trim();
   const msg = document.getElementById('monitorMsg');
   if (!email) { msg.textContent = 'Please enter your email address'; msg.className = 'monitor-msg show error'; return; }
+
   try {
     const res = await fetch('/api/monitor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: currentScan.url, email }) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     msg.textContent = '✅ ' + data.message;
     msg.className = 'monitor-msg show success';
-  } catch(e) { msg.textContent = e.message; msg.className = 'monitor-msg show error'; }
+  } catch(e) {
+    msg.textContent = e.message;
+    msg.className = 'monitor-msg show error';
+  }
 }
 
 async function showHistory() {
@@ -1874,7 +1753,7 @@ async function showHistory() {
         </div>
       \`).join('');
     }
-    section.classList.add('show');
+    section.style.display = 'block';
   } catch(e) { console.error(e); }
 }
 
@@ -1887,21 +1766,245 @@ async function checkout(plan) {
   } catch(e) { alert('Checkout error: ' + e.message); }
 }
 
-// Enter key to scan
-document.getElementById('urlInput').addEventListener('keypress', e => { if (e.key === 'Enter') runScan(); });
-// Clear error on input
-document.getElementById('urlInput').addEventListener('input', () => {
-  document.getElementById('urlInput').classList.remove('input-error');
-  document.getElementById('errorMsg').classList.remove('show');
-});
+// ===== Compare =====
+async function runCompare() {
+  const u1 = document.getElementById('compareUrl1').value.trim();
+  const u2 = document.getElementById('compareUrl2').value.trim();
+  if (!u1 || !u2) { alert('Please enter both URLs'); return; }
+  document.getElementById('compareLoading').classList.add('show');
+  document.getElementById('compareResults').classList.remove('show');
+  document.getElementById('compareError').classList.remove('show');
+  document.getElementById('compareBtn').disabled = true;
+  try {
+    const res = await fetch('/api/compare', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({url1:u1,url2:u2}) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    const grid = document.getElementById('compareGrid');
+    function card(site, label, isWinner) {
+      const color = site.score >= 80 ? 'var(--green)' : site.score >= 50 ? 'var(--orange)' : 'var(--red)';
+      return \`<div class="compare-card \${isWinner ? 'winner' : ''}">
+        <div class="winner-badge">🏆 MORE ACCESSIBLE</div>
+        <div class="comp-url">\${escapeHtml(site.url)}</div>
+        <div class="comp-score" style="color:\${color}">\${site.score}</div>
+        <div class="comp-detail">\${site.summary.issues} issues · \${site.summary.critical} critical · \${site.summary.passed} passed</div>
+        <div class="comp-detail" style="margin-top:4px">\${site.complianceLevel.replace(/-/g,' ')}</div>
+      </div>\`;
+    }
+    grid.innerHTML = card(data.site1, u1, data.winner==='site1') + card(data.site2, u2, data.winner==='site2');
+    document.getElementById('compareResults').classList.add('show');
+    saveLocalScan(data.site1); saveLocalScan(data.site2);
+  } catch(e) {
+    document.getElementById('compareError').textContent = e.message;
+    document.getElementById('compareError').classList.add('show');
+  } finally {
+    document.getElementById('compareLoading').classList.remove('show');
+    document.getElementById('compareBtn').disabled = false;
+  }
+}
 
-// Handle URL params
+// ===== Share functions =====
+function copyShareBadge() {
+  const snippet = document.getElementById('shareSnippet').textContent;
+  navigator.clipboard.writeText(snippet).then(() => {
+    const btn = document.querySelector('.copy-embed');
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => btn.textContent = '📋 Copy HTML Snippet', 2000);
+  });
+}
+function shareTwitter() {
+  if (!currentScan) return;
+  const text = encodeURIComponent('Our website scored ' + currentScan.score + '/100 on ADA accessibility! Scanned with @ComplianceShield 🛡️');
+  window.open('https://twitter.com/intent/tweet?text=' + text + '&url=' + encodeURIComponent('https://gamma.abapture.ai'), '_blank');
+}
+function shareLinkedIn() {
+  window.open('https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent('https://gamma.abapture.ai'), '_blank');
+}
+
+// ===== Fix Priority List =====
+const FIX_INSTRUCTIONS = {
+  'missing-alt': [
+    'Find all <code>&lt;img&gt;</code> tags without an <code>alt</code> attribute',
+    'Add descriptive alt text: <code>&lt;img src="logo.png" alt="Company logo"&gt;</code>',
+    'For decorative images, use empty alt: <code>&lt;img src="bg.png" alt=""&gt;</code>'
+  ],
+  'missing-lang': [
+    'Open your HTML file and find the <code>&lt;html&gt;</code> tag',
+    'Add the lang attribute: <code>&lt;html lang="en"&gt;</code>',
+    'Use the correct ISO language code for your content'
+  ],
+  'missing-title': [
+    'Add a <code>&lt;title&gt;</code> element inside <code>&lt;head&gt;</code>',
+    'Make it descriptive: <code>&lt;title&gt;About Us - Company Name&lt;/title&gt;</code>',
+    'Each page should have a unique, descriptive title'
+  ],
+  'missing-form-label': [
+    'Add a <code>&lt;label&gt;</code> for each input: <code>&lt;label for="email"&gt;Email&lt;/label&gt;</code>',
+    'Connect with matching <code>id</code>: <code>&lt;input id="email" type="email"&gt;</code>',
+    'Or use <code>aria-label</code>: <code>&lt;input aria-label="Search" type="text"&gt;</code>'
+  ],
+  'empty-link': [
+    'Add descriptive text inside every <code>&lt;a&gt;</code> tag',
+    'For icon links, add <code>aria-label</code>: <code>&lt;a href="/cart" aria-label="Shopping cart"&gt;</code>',
+    'Avoid empty links — they confuse screen readers'
+  ],
+  'empty-button': [
+    'Add text content or <code>aria-label</code> to every button',
+    'Example: <code>&lt;button aria-label="Close menu"&gt;✕&lt;/button&gt;</code>',
+    'Icon buttons always need an accessible name'
+  ],
+  'missing-heading': [
+    'Add an <code>&lt;h1&gt;</code> for the page title',
+    'Use <code>&lt;h2&gt;</code> for sections, <code>&lt;h3&gt;</code> for subsections',
+    'Don\'t skip levels — go h1 → h2 → h3 in order'
+  ],
+  'skipped-heading': [
+    'Check your heading hierarchy — don\'t jump from h1 to h3',
+    'Restructure: <code>&lt;h1&gt; → &lt;h2&gt; → &lt;h3&gt;</code> in order',
+    'Use CSS for visual sizing, not heading levels'
+  ],
+  'missing-landmark': [
+    'Wrap your main content in <code>&lt;main&gt;</code>',
+    'Use <code>&lt;nav&gt;</code> for navigation, <code>&lt;header&gt;</code> and <code>&lt;footer&gt;</code>',
+    'These help screen reader users jump between page sections'
+  ],
+  'color-contrast-inline': [
+    'Check color pairs with a contrast checker tool',
+    'Ensure 4.5:1 ratio for normal text, 3:1 for large text',
+    'Avoid light gray text on white backgrounds'
+  ],
+  'missing-focus-style': [
+    'Remove <code>outline: none</code> from CSS focus styles',
+    'Add a visible focus indicator: <code>:focus { outline: 2px solid #6c5ce7; }</code>',
+    'Or use <code>box-shadow</code> as an alternative focus style'
+  ],
+  'generic-link-text': [
+    'Replace "click here" with descriptive text like "Download the report"',
+    'Replace "read more" with "Read more about accessibility compliance"',
+    'Link text should make sense out of context'
+  ],
+  'missing-keyboard-access': [
+    'Add <code>tabindex="0"</code> to clickable non-interactive elements',
+    'Add a keydown handler: <code>onkeydown="if(event.key===\'Enter\') this.click()"</code>',
+    'Better yet: use <code>&lt;button&gt;</code> instead of <code>&lt;div onclick&gt;</code>'
+  ],
+  'keyboard-trap': [
+    'Ensure users can Tab and Shift+Tab out of all components',
+    'Modals should return focus to the trigger on close',
+    'Avoid <code>preventDefault()</code> on Tab/Escape keys'
+  ],
+  'missing-viewport': [
+    'Add to <code>&lt;head&gt;</code>: <code>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;</code>',
+    'This enables responsive design for mobile users',
+    'Don\'t set <code>maximum-scale=1</code> — it prevents zooming'
+  ]
+};
+
+const IMPACT_WEIGHT = { critical: 4, serious: 3, moderate: 2, minor: 1 };
+
+function renderFixPriority(issues) {
+  const section = document.getElementById('fixPriority');
+  const list = document.getElementById('fixList');
+  if (!issues || issues.length === 0) { section.style.display = 'none'; return; }
+  
+  // Sort by impact weight * count, take top 3
+  const sorted = [...issues].sort((a, b) => (IMPACT_WEIGHT[b.impact]||1) * b.count - (IMPACT_WEIGHT[a.impact]||1) * a.count);
+  const top3 = sorted.slice(0, 3);
+  
+  // Estimate points per fix
+  const totalIssues = issues.length;
+  const pointsPerIssue = totalIssues > 0 ? Math.round(100 / (totalIssues + issues.reduce((s,i)=>s+i.count,0)/issues.length)) : 5;
+  
+  list.innerHTML = top3.map((issue, i) => {
+    const steps = FIX_INSTRUCTIONS[issue.id] || [
+      'Review the WCAG guideline: ' + issue.wcag,
+      'Check each flagged element and apply the fix',
+      'Re-test to confirm the issue is resolved'
+    ];
+    const pts = Math.max(2, Math.round(pointsPerIssue * (IMPACT_WEIGHT[issue.impact]||1) * 0.8));
+    return \`<div class="fix-item \${issue.impact}">
+      <div class="fix-item-header">
+        <span class="fix-item-name">\${i+1}. \${issue.name} <span style="font-weight:400;color:var(--muted)">(\${issue.count} found)</span></span>
+        <span class="fix-item-impact impact-\${issue.impact}">\${issue.impact}</span>
+      </div>
+      <ol class="fix-steps">\${steps.map(s => '<li>' + s + '</li>').join('')}</ol>
+      <div class="fix-item-points">🎯 Est. +\${pts} points when fixed</div>
+    </div>\`;
+  }).join('');
+  
+  section.style.display = 'block';
+}
+
+// ===== Rescan =====
+let previousScore = null;
+
+async function runRescan() {
+  if (!currentScan) return;
+  const btn = document.getElementById('rescanBtn');
+  btn.disabled = true;
+  btn.textContent = '🔄 Rescanning...';
+  previousScore = currentScan.score;
+  
+  try {
+    const res = await fetch('/api/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: currentScan.url }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Scan failed');
+    currentScan = data;
+    displayResults(data);
+    
+    // Show score change
+    const diff = data.score - previousScore;
+    const changeEl = document.getElementById('scoreChange');
+    if (diff > 0) {
+      changeEl.textContent = '🎉 +' + diff + ' points! Great improvement!';
+      changeEl.className = 'score-change show positive';
+    } else if (diff < 0) {
+      changeEl.textContent = '📉 ' + diff + ' points — some new issues found';
+      changeEl.className = 'score-change show negative';
+    } else {
+      changeEl.textContent = '➡️ Same score — keep working on those fixes!';
+      changeEl.className = 'score-change show neutral';
+    }
+  } catch(e) {
+    alert('Rescan failed: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔄 Rescan — See Your Improvement';
+  }
+}
+
+// ===== Email Report =====
+async function sendEmailReport() {
+  if (!currentScan) return;
+  const email = document.getElementById('reportEmail').value.trim();
+  const msg = document.getElementById('emailReportMsg');
+  if (!email) { msg.textContent = 'Please enter your email'; msg.style.color = 'var(--red)'; msg.classList.add('show'); return; }
+  
+  try {
+    const res = await fetch('/api/email-report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, scanId: currentScan.id }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    msg.textContent = '✅ ' + data.message;
+    msg.style.color = 'var(--green)';
+    msg.classList.add('show');
+  } catch(e) {
+    msg.textContent = e.message;
+    msg.style.color = 'var(--red)';
+    msg.classList.add('show');
+  }
+}
+
+document.getElementById('urlInput').addEventListener('keypress', e => { if (e.key === 'Enter') runScan(); });
 const params = new URLSearchParams(window.location.search);
 if (params.get('checkout') === 'success') alert('🎉 Subscription activated! Thank you.');
 if (params.get('checkout') === 'cancel') alert('Checkout cancelled.');
 </script>
 </body>
 </html>`;
+
+// ==================== 404 PAGE ====================
+app.use((req, res) => {
+  res.status(404).send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>404 — ComplianceShield</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,'Inter','Segoe UI',sans-serif;background:#0a0a0f;color:#e0e0e0;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center}.c{max-width:500px;padding:40px}.icon{font-size:6rem;margin-bottom:20px}h1{font-size:5rem;font-weight:800;background:linear-gradient(135deg,#6c5ce7,#a29bfe);-webkit-background-clip:text;-webkit-text-fill-color:transparent}p{color:#888;font-size:1.1rem;margin:16px 0}a{display:inline-block;margin-top:20px;padding:14px 32px;background:#6c5ce7;color:white;border-radius:10px;text-decoration:none;font-weight:700;transition:0.2s}a:hover{background:#a29bfe}</style></head><body><div class="c"><div class="icon">🛡️</div><h1>404</h1><p>This page doesn't exist — but your accessibility issues might.</p><p style="font-size:0.9rem">The page you're looking for can't be found. Let's get you back on track.</p><a href="/">← Scan Your Website</a></div></body></html>`);
+});
 
 app.listen(3003, '0.0.0.0', () => {
   console.log('ComplianceShield running on port 3003');
