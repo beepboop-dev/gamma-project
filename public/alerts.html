@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alert Subscriptions — MetaAPI</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f172a;--surface:#1e293b;--border:#334155;--text:#e2e8f0;--muted:#94a3b8;--accent:#38bdf8;--green:#34d399;--red:#f87171;--purple:#a78bfa;--yellow:#fbbf24}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.container{max-width:800px;margin:0 auto;padding:0 24px}
+
+nav{padding:16px 0;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:10}
+nav .container{display:flex;justify-content:space-between;align-items:center}
+nav .logo{font-size:1.3em;font-weight:700;color:var(--text)}
+nav .logo span{color:var(--accent)}
+nav .links a{margin-left:24px;color:var(--muted);font-size:.9em}
+
+.page-header{padding:48px 0 32px;text-align:center}
+.page-header h1{font-size:2.2em;font-weight:800;margin-bottom:8px}
+.page-header h1 span{background:linear-gradient(135deg,var(--accent),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.page-header p{color:var(--muted);font-size:1.1em}
+
+/* Subscribe form */
+.subscribe-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;margin-bottom:32px}
+.subscribe-card h2{font-size:1.3em;margin-bottom:16px}
+.form-row{display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.form-row input,.form-row select{flex:1;min-width:180px;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.95em}
+.form-row select{cursor:pointer}
+.btn{display:inline-block;padding:10px 24px;border-radius:8px;font-weight:600;font-size:.95em;border:none;cursor:pointer;transition:all .15s}
+.btn-primary{background:var(--accent);color:#0f172a}.btn-primary:hover{opacity:.9}
+.btn-danger{background:transparent;color:var(--red);border:1px solid var(--red);padding:6px 14px;font-size:.85em}.btn-danger:hover{background:var(--red);color:white}
+.btn-sm{padding:6px 14px;font-size:.85em}
+.btn-outline{background:transparent;color:var(--accent);border:1px solid var(--accent)}.btn-outline:hover{background:var(--accent);color:#0f172a}
+
+/* Lookup */
+.lookup-bar{display:flex;gap:12px;margin-bottom:32px}
+.lookup-bar input{flex:1;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.95em}
+
+/* Subscription list */
+.sub-list{display:flex;flex-direction:column;gap:12px;margin-bottom:40px}
+.sub-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;transition:border-color .15s}
+.sub-card:hover{border-color:var(--accent)}
+.sub-card .url{font-family:monospace;font-size:.95em;color:var(--accent);word-break:break-all}
+.sub-card .meta{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;align-items:center}
+.sub-card .meta span{font-size:.85em;color:var(--muted)}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.75em;font-weight:600}
+.badge-active{background:#06543520;color:var(--green)}
+.badge-paused{background:#78350f20;color:var(--yellow)}
+.sub-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+
+.empty-state{text-align:center;padding:48px 24px;color:var(--muted)}
+.empty-state .icon{font-size:3em;margin-bottom:12px}
+
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--green);color:var(--green);padding:12px 20px;border-radius:8px;font-size:.9em;display:none;z-index:100;animation:slideIn .3s ease}
+@keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* Edit modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;justify-content:center;align-items:center}
+.modal-overlay.active{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;width:90%;max-width:460px}
+.modal h3{margin-bottom:16px}
+.modal .form-group{margin-bottom:14px}
+.modal label{display:block;color:var(--muted);font-size:.85em;margin-bottom:6px}
+.modal input,.modal select{width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.95em}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+
+footer{padding:32px 0;text-align:center;color:var(--muted);font-size:.85em;border-top:1px solid var(--border)}
+@media(max-width:600px){.form-row{flex-direction:column}.lookup-bar{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<nav><div class="container">
+  <div class="logo">Meta<span>API</span></div>
+  <div class="links">
+    <a href="/">Home</a>
+    <a href="/#docs">Docs</a>
+    <a href="/alerts.html" style="color:var(--text)">Alerts</a>
+  </div>
+</div></nav>
+
+<div class="container">
+  <div class="page-header">
+    <h1>📧 <span>Alert Subscriptions</span></h1>
+    <p>Monitor URLs and receive scan reports delivered to your inbox.</p>
+  </div>
+
+  <!-- New subscription -->
+  <div class="subscribe-card">
+    <h2>➕ New Subscription</h2>
+    <div class="form-row">
+      <input type="email" id="sub-email" placeholder="you@company.com" required>
+      <input type="url" id="sub-url" placeholder="https://example.com" required>
+    </div>
+    <div class="form-row">
+      <select id="sub-freq">
+        <option value="daily">Daily reports</option>
+        <option value="weekly" selected>Weekly reports</option>
+        <option value="monthly">Monthly reports</option>
+      </select>
+      <button class="btn btn-primary" onclick="createSubscription()">Subscribe</button>
+    </div>
+    <div id="sub-result" style="margin-top:12px;font-size:.9em;display:none"></div>
+  </div>
+
+  <!-- Lookup -->
+  <h2 style="margin-bottom:12px">Your Subscriptions</h2>
+  <div class="lookup-bar">
+    <input type="email" id="lookup-email" placeholder="Enter your email to view subscriptions">
+    <button class="btn btn-outline" onclick="loadSubscriptions()">Look Up</button>
+  </div>
+
+  <div id="sub-list" class="sub-list">
+    <div class="empty-state">
+      <div class="icon">📭</div>
+      <p>Enter your email above to view your subscriptions</p>
+    </div>
+  </div>
+</div>
+
+<!-- Edit modal -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <h3>✏️ Edit Subscription</h3>
+    <input type="hidden" id="edit-id">
+    <div class="form-group">
+      <label>Monitored URL</label>
+      <input type="url" id="edit-url">
+    </div>
+    <div class="form-group">
+      <label>Frequency</label>
+      <select id="edit-freq">
+        <option value="daily">Daily</option>
+        <option value="weekly">Weekly</option>
+        <option value="monthly">Monthly</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Status</label>
+      <select id="edit-enabled">
+        <option value="true">Active</option>
+        <option value="false">Paused</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<footer><div class="container">
+  <p>MetaAPI — Built by <a href="https://abapture.ai">Abapture</a></p>
+</div></footer>
+
+<script>
+const API = '/api/alerts';
+
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderColor = isError ? 'var(--red)' : 'var(--green)';
+  t.style.color = isError ? 'var(--red)' : 'var(--green)';
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 3000);
+}
+
+async function createSubscription() {
+  const email = document.getElementById('sub-email').value;
+  const url = document.getElementById('sub-url').value;
+  const frequency = document.getElementById('sub-freq').value;
+  if (!email || !url) return showToast('Please fill in all fields', true);
+
+  try {
+    const res = await fetch(API + '/subscribe', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ email, url, frequency })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('✅ Subscription created!');
+      document.getElementById('sub-url').value = '';
+      document.getElementById('lookup-email').value = email;
+      loadSubscriptions();
+    } else {
+      showToast(data.error || 'Failed to create subscription', true);
+    }
+  } catch(e) { showToast('Network error', true); }
+}
+
+async function loadSubscriptions() {
+  const email = document.getElementById('lookup-email').value;
+  if (!email) return showToast('Enter an email', true);
+
+  try {
+    const res = await fetch(API + '/subscriptions?email=' + encodeURIComponent(email));
+    const data = await res.json();
+    const list = document.getElementById('sub-list');
+
+    if (!data.subscriptions.length) {
+      list.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>No subscriptions found for this email</p></div>';
+      return;
+    }
+
+    list.innerHTML = data.subscriptions.map(s => `
+      <div class="sub-card" id="sub-${s.id}">
+        <div class="url">${escHtml(s.url)}</div>
+        <div class="meta">
+          <span class="badge ${s.enabled ? 'badge-active' : 'badge-paused'}">${s.enabled ? '● Active' : '● Paused'}</span>
+          <span>📅 ${s.frequency.charAt(0).toUpperCase() + s.frequency.slice(1)}</span>
+          <span>📬 Next: ${new Date(s.nextSendAt).toLocaleDateString()}</span>
+          <span>Created: ${new Date(s.createdAt).toLocaleDateString()}</span>
+        </div>
+        <div class="sub-actions">
+          <button class="btn btn-outline btn-sm" onclick="openEdit('${s.id}','${escAttr(s.url)}','${s.frequency}',${s.enabled})">Edit</button>
+          <button class="btn btn-outline btn-sm" onclick="toggleSub('${s.id}',${!s.enabled})">${s.enabled ? 'Pause' : 'Resume'}</button>
+          <button class="btn btn-outline btn-sm" onclick="previewReport('${escAttr(s.url)}')">Preview Report</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteSub('${s.id}')">Delete</button>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) { showToast('Failed to load subscriptions', true); }
+}
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s) { return s.replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+
+function openEdit(id, url, freq, enabled) {
+  document.getElementById('edit-id').value = id;
+  document.getElementById('edit-url').value = url;
+  document.getElementById('edit-freq').value = freq;
+  document.getElementById('edit-enabled').value = String(enabled);
+  document.getElementById('edit-modal').classList.add('active');
+}
+function closeModal() { document.getElementById('edit-modal').classList.remove('active'); }
+
+async function saveEdit() {
+  const id = document.getElementById('edit-id').value;
+  const body = {
+    url: document.getElementById('edit-url').value,
+    frequency: document.getElementById('edit-freq').value,
+    enabled: document.getElementById('edit-enabled').value === 'true',
+  };
+  try {
+    const res = await fetch(API + '/subscriptions/' + id, {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (data.success) { showToast('✅ Updated!'); closeModal(); loadSubscriptions(); }
+    else showToast(data.error, true);
+  } catch(e) { showToast('Network error', true); }
+}
+
+async function toggleSub(id, enabled) {
+  try {
+    await fetch(API + '/subscriptions/' + id, {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ enabled })
+    });
+    showToast(enabled ? '▶️ Resumed' : '⏸️ Paused');
+    loadSubscriptions();
+  } catch(e) { showToast('Error', true); }
+}
+
+async function deleteSub(id) {
+  if (!confirm('Delete this subscription?')) return;
+  try {
+    await fetch(API + '/subscriptions/' + id, { method: 'DELETE' });
+    showToast('🗑️ Deleted');
+    loadSubscriptions();
+  } catch(e) { showToast('Error', true); }
+}
+
+function previewReport(url) {
+  const email = document.getElementById('lookup-email').value || 'preview@example.com';
+  const form = document.createElement('form');
+  form.method = 'POST'; form.action = API + '/preview-report'; form.target = '_blank';
+  ['email','url','frequency'].forEach((k,i) => {
+    const inp = document.createElement('input'); inp.type = 'hidden'; inp.name = k;
+    inp.value = [email, url, 'weekly'][i]; form.appendChild(inp);
+  });
+  document.body.appendChild(form); form.submit(); form.remove();
+}
+</script>
+</body>
+</html>

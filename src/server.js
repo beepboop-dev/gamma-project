@@ -227,6 +227,9 @@ app.post('/generate-key', express.json(), (req, res) => {
   res.json({ api_key: newKey, tier: 'free', daily_limit: 100 });
 });
 
+// Alert subscriptions
+app.use('/api/alerts', require('./routes/alerts'));
+
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok', uptime: process.uptime() }));
 
