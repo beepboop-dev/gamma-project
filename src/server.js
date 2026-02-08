@@ -45,6 +45,253 @@ const ALERTS_FILE = path.join(DATA_DIR, 'alerts.json');
 let alertPreferences = {};
 try { alertPreferences = JSON.parse(fs.readFileSync(ALERTS_FILE, 'utf8')); } catch(e) {}
 function saveAlerts() { fs.writeFileSync(ALERTS_FILE, JSON.stringify(alertPreferences, null, 2)); }
+// ==================== EMAIL SERVICE ====================
+const nodemailer = require('nodemailer');
+
+// Email settings store (per-monitor email preferences)
+const EMAIL_SETTINGS_FILE = path.join(DATA_DIR, 'email-settings.json');
+let emailSettings = {};
+try { emailSettings = JSON.parse(fs.readFileSync(EMAIL_SETTINGS_FILE, 'utf8')); } catch(e) {}
+function saveEmailSettings() { fs.writeFileSync(EMAIL_SETTINGS_FILE, JSON.stringify(emailSettings, null, 2)); }
+
+// Weekly digest tracking
+const DIGEST_FILE = path.join(DATA_DIR, 'digest-tracking.json');
+let digestTracking = {};
+try { digestTracking = JSON.parse(fs.readFileSync(DIGEST_FILE, 'utf8')); } catch(e) {}
+function saveDigestTracking() { fs.writeFileSync(DIGEST_FILE, JSON.stringify(digestTracking, null, 2)); }
+
+function createTransporter() {
+  const smtpConfig = emailSettings._smtp || {};
+  if (smtpConfig.host && smtpConfig.port) {
+    return nodemailer.createTransport({
+      host: smtpConfig.host,
+      port: parseInt(smtpConfig.port),
+      secure: smtpConfig.secure !== false,
+      auth: smtpConfig.user ? { user: smtpConfig.user, pass: smtpConfig.pass } : undefined
+    });
+  }
+  // No SMTP configured - return null (will log to console)
+  return null;
+}
+
+function generateScanEmailHTML(scan, prevScan, monitor) {
+  const scoreColor = scan.score >= 80 ? '#00b894' : scan.score >= 50 ? '#f39c12' : '#e74c3c';
+  const statusMap = {
+    'compliant': { text: 'COMPLIANT', color: '#00b894', icon: '✅' },
+    'needs-improvement': { text: 'NEEDS IMPROVEMENT', color: '#f39c12', icon: '⚠️' },
+    'partially-compliant': { text: 'PARTIALLY COMPLIANT', color: '#f1c40f', icon: '⚠️' },
+    'non-compliant': { text: 'NON-COMPLIANT', color: '#e74c3c', icon: '❌' }
+  };
+  const status = statusMap[scan.complianceLevel] || statusMap['non-compliant'];
+
+  let comparisonHTML = '';
+  if (prevScan) {
+    const scoreDiff = scan.score - prevScan.score;
+    const issuesDiff = scan.summary.issues - prevScan.summary.issues;
+    const arrow = scoreDiff > 0 ? '📈' : scoreDiff < 0 ? '📉' : '➡️';
+    const diffColor = scoreDiff > 0 ? '#00b894' : scoreDiff < 0 ? '#e74c3c' : '#888';
+    
+    const prevIssueIds = new Set(prevScan.issues.map(i => i.id));
+    const currIssueIds = new Set(scan.issues.map(i => i.id));
+    const fixed = [...prevIssueIds].filter(id => !currIssueIds.has(id));
+    const newIssues = [...currIssueIds].filter(id => !prevIssueIds.has(id));
+
+    comparisonHTML = `
+    <div style="background:#1a1a2e;border-radius:12px;padding:20px;margin:20px 0">
+      <h3 style="color:white;margin:0 0 12px;font-size:16px">${arrow} Change Since Last Scan</h3>
+      <table style="width:100%;border-collapse:collapse">
+        <tr>
+          <td style="padding:8px 12px;color:#888;font-size:14px">Score Change</td>
+          <td style="padding:8px 12px;color:${diffColor};font-weight:700;font-size:18px;text-align:right">${scoreDiff > 0 ? '+' : ''}${scoreDiff} points</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;color:#888;font-size:14px">Issues Change</td>
+          <td style="padding:8px 12px;color:${issuesDiff < 0 ? '#00b894' : issuesDiff > 0 ? '#e74c3c' : '#888'};font-weight:600;text-align:right">${issuesDiff > 0 ? '+' : ''}${issuesDiff}</td>
+        </tr>
+        ${fixed.length > 0 ? '<tr><td style="padding:8px 12px;color:#00b894;font-size:14px">✅ Fixed</td><td style="padding:8px 12px;color:#00b894;font-size:13px;text-align:right">' + fixed.join(', ') + '</td></tr>' : ''}
+        ${newIssues.length > 0 ? '<tr><td style="padding:8px 12px;color:#e74c3c;font-size:14px">🆕 New Issues</td><td style="padding:8px 12px;color:#e74c3c;font-size:13px;text-align:right">' + newIssues.join(', ') + '</td></tr>' : ''}
+      </table>
+    </div>`;
+  }
+
+  const criticalIssues = scan.issues.filter(i => i.impact === 'critical');
+  let criticalHTML = '';
+  if (criticalIssues.length > 0) {
+    criticalHTML = `
+    <div style="background:rgba(231,76,60,0.1);border:1px solid #e74c3c;border-radius:12px;padding:20px;margin:20px 0">
+      <h3 style="color:#e74c3c;margin:0 0 12px;font-size:16px">🚨 Critical Issues (${criticalIssues.length})</h3>
+      ${criticalIssues.map(i => `
+        <div style="padding:8px 0;border-bottom:1px solid rgba(231,76,60,0.2)">
+          <div style="color:white;font-weight:600;font-size:14px">${i.name}</div>
+          <div style="color:#888;font-size:12px">${i.wcag} — ${i.count} occurrence${i.count > 1 ? 's' : ''}</div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  const topIssues = scan.issues.slice(0, 5).filter(i => i.impact !== 'critical');
+  let issuesHTML = '';
+  if (topIssues.length > 0) {
+    const impactColors = { serious: '#f39c12', moderate: '#f1c40f', minor: '#888' };
+    issuesHTML = `
+    <div style="margin:20px 0">
+      <h3 style="color:white;margin:0 0 12px;font-size:16px">Top Issues to Fix</h3>
+      ${topIssues.map(i => `
+        <div style="padding:10px 14px;background:#1a1a2e;border-radius:8px;margin-bottom:6px;border-left:3px solid ${impactColors[i.impact] || '#888'}">
+          <div style="color:white;font-weight:600;font-size:13px">${i.name} <span style="color:${impactColors[i.impact] || '#888'};font-size:11px;text-transform:uppercase">(${i.impact})</span></div>
+          <div style="color:#888;font-size:12px">${i.wcag} — ${i.count} found</div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0a0a0f;font-family:-apple-system,'Inter','Segoe UI',Helvetica,Arial,sans-serif">
+<div style="max-width:600px;margin:0 auto;background:#12121a;border-radius:16px;overflow:hidden;border:1px solid #1e1e2e">
+  <!-- Header -->
+  <div style="background:linear-gradient(135deg,#6c5ce7,#a29bfe);padding:32px;text-align:center">
+    <div style="font-size:32px;margin-bottom:8px">🛡️</div>
+    <h1 style="color:white;margin:0;font-size:24px;font-weight:800">ComplianceShield</h1>
+    <p style="color:rgba(255,255,255,0.8);margin:4px 0 0;font-size:14px">Accessibility Scan Report</p>
+  </div>
+  
+  <!-- Score -->
+  <div style="padding:32px;text-align:center">
+    <p style="color:#888;margin:0 0 4px;font-size:13px">Scan completed ${new Date(scan.scannedAt).toLocaleString()}</p>
+    <p style="color:#a29bfe;margin:0 0 20px;font-size:14px;word-break:break-all">${scan.url}</p>
+    
+    <div style="display:inline-block;width:120px;height:120px;border-radius:50%;border:6px solid ${scoreColor};text-align:center;line-height:108px">
+      <span style="font-size:42px;font-weight:800;color:${scoreColor}">${scan.score}</span>
+    </div>
+    <p style="color:#888;margin:8px 0 0;font-size:13px">out of 100</p>
+    
+    <div style="display:inline-block;background:${status.color}22;border:1px solid ${status.color};border-radius:8px;padding:8px 20px;margin-top:16px">
+      <span style="color:${status.color};font-weight:700;font-size:14px">${status.icon} ${status.text}</span>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div style="display:flex;padding:0 32px 24px;gap:8px">
+    <div style="flex:1;background:#0a0a0f;border-radius:10px;padding:16px;text-align:center">
+      <div style="font-size:24px;font-weight:800;color:#e74c3c">${scan.summary.issues}</div>
+      <div style="font-size:11px;color:#888;text-transform:uppercase">Issues</div>
+    </div>
+    <div style="flex:1;background:#0a0a0f;border-radius:10px;padding:16px;text-align:center">
+      <div style="font-size:24px;font-weight:800;color:#e74c3c">${scan.summary.critical}</div>
+      <div style="font-size:11px;color:#888;text-transform:uppercase">Critical</div>
+    </div>
+    <div style="flex:1;background:#0a0a0f;border-radius:10px;padding:16px;text-align:center">
+      <div style="font-size:24px;font-weight:800;color:#00b894">${scan.summary.passed}</div>
+      <div style="font-size:11px;color:#888;text-transform:uppercase">Passed</div>
+    </div>
+    <div style="flex:1;background:#0a0a0f;border-radius:10px;padding:16px;text-align:center">
+      <div style="font-size:24px;font-weight:800;color:#f39c12">${scan.summary.warnings}</div>
+      <div style="font-size:11px;color:#888;text-transform:uppercase">Warnings</div>
+    </div>
+  </div>
+
+  ${comparisonHTML}
+  
+  <div style="padding:0 32px">
+    ${criticalHTML}
+    ${issuesHTML}
+  </div>
+
+  <!-- CTA -->
+  <div style="padding:24px 32px;text-align:center">
+    <a href="https://gamma.abapture.ai/?scan=${encodeURIComponent(scan.url)}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#6c5ce7,#a29bfe);color:white;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px">View Full Report →</a>
+  </div>
+
+  <!-- Footer -->
+  <div style="padding:24px 32px;border-top:1px solid #1e1e2e;text-align:center">
+    <p style="color:#666;font-size:12px;margin:0">You're receiving this because you set up monitoring on ComplianceShield.</p>
+    <p style="color:#666;font-size:12px;margin:4px 0 0"><a href="https://gamma.abapture.ai" style="color:#6c5ce7">gamma.abapture.ai</a> · <a href="https://gamma.abapture.ai/api/monitor/unsubscribe?email=${encodeURIComponent(monitor?.email || '')}" style="color:#888">Unsubscribe</a></p>
+  </div>
+</div>
+</body></html>`;
+}
+
+function generateDigestEmailHTML(email, monitorData) {
+  const rows = monitorData.map(m => {
+    const scoreColor = m.score >= 80 ? '#00b894' : m.score >= 50 ? '#f39c12' : '#e74c3c';
+    const diffText = m.scoreDiff !== null ? (m.scoreDiff > 0 ? '+' + m.scoreDiff : '' + m.scoreDiff) : 'N/A';
+    const diffColor = m.scoreDiff > 0 ? '#00b894' : m.scoreDiff < 0 ? '#e74c3c' : '#888';
+    return `<tr>
+      <td style="padding:12px;border-bottom:1px solid #1e1e2e;color:white;font-size:13px;word-break:break-all">${m.url}</td>
+      <td style="padding:12px;border-bottom:1px solid #1e1e2e;color:${scoreColor};font-weight:700;text-align:center;font-size:16px">${m.score}</td>
+      <td style="padding:12px;border-bottom:1px solid #1e1e2e;color:${diffColor};text-align:center;font-weight:600">${diffText}</td>
+      <td style="padding:12px;border-bottom:1px solid #1e1e2e;color:#888;text-align:center;font-size:13px">${m.issues}</td>
+    </tr>`;
+  }).join('');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0a0a0f;font-family:-apple-system,'Inter','Segoe UI',Helvetica,Arial,sans-serif">
+<div style="max-width:600px;margin:0 auto;background:#12121a;border-radius:16px;overflow:hidden;border:1px solid #1e1e2e">
+  <div style="background:linear-gradient(135deg,#6c5ce7,#a29bfe);padding:32px;text-align:center">
+    <div style="font-size:32px;margin-bottom:8px">🛡️</div>
+    <h1 style="color:white;margin:0;font-size:24px;font-weight:800">Weekly Accessibility Digest</h1>
+    <p style="color:rgba(255,255,255,0.8);margin:4px 0 0;font-size:14px">${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+  </div>
+  <div style="padding:24px 32px">
+    <p style="color:#888;font-size:14px;margin:0 0 16px">Here's your weekly summary of ${monitorData.length} monitored site${monitorData.length > 1 ? 's' : ''}:</p>
+    <table style="width:100%;border-collapse:collapse;background:#0a0a0f;border-radius:10px;overflow:hidden">
+      <tr style="background:#1a1a2e">
+        <th style="padding:10px 12px;text-align:left;color:#888;font-size:12px;text-transform:uppercase">Site</th>
+        <th style="padding:10px 12px;text-align:center;color:#888;font-size:12px;text-transform:uppercase">Score</th>
+        <th style="padding:10px 12px;text-align:center;color:#888;font-size:12px;text-transform:uppercase">Change</th>
+        <th style="padding:10px 12px;text-align:center;color:#888;font-size:12px;text-transform:uppercase">Issues</th>
+      </tr>
+      ${rows}
+    </table>
+  </div>
+  <div style="padding:24px 32px;text-align:center">
+    <a href="https://gamma.abapture.ai" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#6c5ce7,#a29bfe);color:white;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px">View Dashboard →</a>
+  </div>
+  <div style="padding:20px 32px;border-top:1px solid #1e1e2e;text-align:center">
+    <p style="color:#666;font-size:12px;margin:0"><a href="https://gamma.abapture.ai" style="color:#6c5ce7">ComplianceShield</a> · <a href="https://gamma.abapture.ai/api/monitor/unsubscribe?email=${encodeURIComponent(email)}" style="color:#888">Unsubscribe</a></p>
+  </div>
+</div>
+</body></html>`;
+}
+
+async function sendAlertEmail(to, subject, html) {
+  const transporter = createTransporter();
+  const fromAddr = (emailSettings._smtp && emailSettings._smtp.from) || 'ComplianceShield <alerts@complianceshield.io>';
+  
+  if (!transporter) {
+    console.log('[Email] SMTP not configured — logging email to console');
+    console.log('[Email] To:', to);
+    console.log('[Email] Subject:', subject);
+    console.log('[Email] HTML length:', html.length);
+    console.log('[Email] HTML preview:', html.substring(0, 500) + '...');
+    return { logged: true, to, subject };
+  }
+
+  try {
+    const info = await transporter.sendMail({ from: fromAddr, to, subject, html });
+    console.log('[Email] Sent to', to, '- messageId:', info.messageId);
+    return { sent: true, messageId: info.messageId };
+  } catch(e) {
+    console.error('[Email] Failed to send to', to, ':', e.message);
+    return { error: e.message };
+  }
+}
+
+function shouldNotifyScoreDrop(currentScore, previousScore) {
+  if (previousScore === null || previousScore === undefined) return false;
+  return (previousScore - currentScore) > 5;
+}
+
+function hasNewCriticalIssues(currentScan, prevScan) {
+  if (!prevScan) return currentScan.issues.some(i => i.impact === 'critical');
+  const prevCritical = new Set(prevScan.issues.filter(i => i.impact === 'critical').map(i => i.id));
+  return currentScan.issues.filter(i => i.impact === 'critical').some(i => !prevCritical.has(i.id));
+}
+
 function saveMonitors() { fs.writeFileSync(MONITORS_FILE, JSON.stringify(monitors, null, 2)); }
 
 // ==================== WCAG RULES ====================
@@ -806,17 +1053,81 @@ async function runScheduledScans() {
       scanHistory.push(scanRecord);
       saveHistory();
 
+      // Find previous scan for comparison
+      const prevScans = scanHistory.filter(s => s.url === monitor.url && s.id !== scanRecord.id);
+      const prevScan = prevScans.length > 0 ? prevScans[prevScans.length - 1] : null;
+      const previousScore = monitor.lastScore;
+
       monitor.lastScanAt = now.toISOString();
       monitor.lastScore = result.score;
-      // Set next scan based on frequency
       const intervalMs = monitor.frequency === 'daily' ? 24*60*60*1000 : monitor.frequency === 'monthly' ? 30*24*60*60*1000 : 7*24*60*60*1000;
       monitor.nextScanAt = new Date(now.getTime() + intervalMs).toISOString();
       saveMonitors();
 
       console.log(`[Monitor] ${monitor.url} scored ${result.score}/100 (${result.summary.issues} issues)`);
+
+      // Check alert thresholds and send email
+      const emailPref = emailSettings[monitor.email] || alertPreferences[monitor.email];
+      const alertsEnabled = !emailPref || emailPref.enabled !== false;
+      
+      if (alertsEnabled && monitor.email) {
+        const scoreDrop = shouldNotifyScoreDrop(result.score, previousScore);
+        const newCritical = hasNewCriticalIssues(result, prevScan);
+        
+        // Send scan result email
+        const emailHTML = generateScanEmailHTML(result, prevScan, monitor);
+        let subject = `[ComplianceShield] ${monitor.url} — Score: ${result.score}/100`;
+        if (scoreDrop) subject = `⚠️ [ComplianceShield] Score dropped! ${monitor.url} — ${result.score}/100`;
+        if (newCritical) subject = `🚨 [ComplianceShield] New critical issues! ${monitor.url} — ${result.score}/100`;
+        
+        await sendAlertEmail(monitor.email, subject, emailHTML);
+        
+        if (scoreDrop) console.log(`[Alert] Score drop alert sent for ${monitor.url}: ${previousScore} → ${result.score}`);
+        if (newCritical) console.log(`[Alert] New critical issues alert sent for ${monitor.url}`);
+      }
     } catch(e) {
       console.error(`[Monitor] Failed to scan ${monitor.url}: ${e.message}`);
     }
+  }
+
+  // Weekly digest - runs on Sundays
+  if (now.getDay() === 0) {
+    await sendWeeklyDigests();
+  }
+}
+
+async function sendWeeklyDigests() {
+  // Group monitors by email
+  const byEmail = {};
+  monitors.filter(m => m.active).forEach(m => {
+    if (!byEmail[m.email]) byEmail[m.email] = [];
+    byEmail[m.email].push(m);
+  });
+
+  for (const [email, mons] of Object.entries(byEmail)) {
+    const emailPref = emailSettings[email] || alertPreferences[email];
+    if (emailPref && emailPref.digestEnabled === false) continue;
+
+    const lastDigest = digestTracking[email];
+    if (lastDigest && (Date.now() - new Date(lastDigest).getTime()) < 6 * 24 * 60 * 60 * 1000) continue;
+
+    const monitorData = mons.map(m => {
+      const prevScans = scanHistory.filter(s => s.url === m.url);
+      const lastTwo = prevScans.slice(-2);
+      return {
+        url: m.url,
+        score: m.lastScore || 0,
+        scoreDiff: lastTwo.length >= 2 ? lastTwo[1].score - lastTwo[0].score : null,
+        issues: lastTwo.length > 0 ? lastTwo[lastTwo.length - 1].summary.issues : 0
+      };
+    });
+
+    const html = generateDigestEmailHTML(email, monitorData);
+    await sendAlertEmail(email, `📊 [ComplianceShield] Weekly Accessibility Digest — ${monitorData.length} sites`, html);
+    
+    digestTracking[email] = new Date().toISOString();
+    saveDigestTracking();
+    console.log(`[Digest] Weekly digest sent to ${email} with ${monitorData.length} monitors`);
   }
 }
 
@@ -1055,6 +1366,88 @@ app.get('/api/alerts/status', (req, res) => {
   if (!config) return res.json({ configured: false });
   res.json({ configured: true, ...config });
 });
+
+
+// ==================== EMAIL SETTINGS API ====================
+app.get('/api/email-settings', (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.status(400).json({ error: 'Email parameter required' });
+  const settings = emailSettings[email.toLowerCase().trim()];
+  const smtp = emailSettings._smtp || {};
+  res.json({
+    configured: !!settings,
+    settings: settings || { enabled: true, digestEnabled: true, scoreDropThreshold: 5, notifyOnCritical: true },
+    smtpConfigured: !!(smtp.host && smtp.port)
+  });
+});
+
+app.post('/api/email-settings', (req, res) => {
+  const { email, enabled, digestEnabled, scoreDropThreshold, notifyOnCritical } = req.body;
+  if (!email || !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) return res.status(400).json({ error: 'Valid email required' });
+  
+  const key = email.toLowerCase().trim();
+  emailSettings[key] = {
+    email: key,
+    enabled: enabled !== false,
+    digestEnabled: digestEnabled !== false,
+    scoreDropThreshold: parseInt(scoreDropThreshold) || 5,
+    notifyOnCritical: notifyOnCritical !== false,
+    updatedAt: new Date().toISOString()
+  };
+  saveEmailSettings();
+  res.json({ success: true, settings: emailSettings[key] });
+});
+
+app.post('/api/email-settings/smtp', (req, res) => {
+  const { host, port, secure, user, pass, from } = req.body;
+  emailSettings._smtp = { host, port: parseInt(port) || 587, secure: secure !== false, user, pass, from: from || 'ComplianceShield <alerts@complianceshield.io>' };
+  saveEmailSettings();
+  console.log('[SMTP] Configuration updated:', { host, port, secure, user: user ? '***' : null });
+  res.json({ success: true, message: 'SMTP settings saved', configured: !!(host && port) });
+});
+
+app.post('/api/email-settings/smtp/test', async (req, res) => {
+  const { to } = req.body;
+  if (!to) return res.status(400).json({ error: 'Recipient email required' });
+  const result = await sendAlertEmail(to, '[ComplianceShield] Test Email', '<div style="font-family:sans-serif;padding:32px;text-align:center"><h1>🛡️ ComplianceShield</h1><p>Your email alerts are working correctly!</p><p style="color:#888;font-size:14px">This is a test email from your ComplianceShield monitoring setup.</p></div>');
+  res.json({ success: !result.error, result });
+});
+
+app.post('/api/email-settings/test-scan-email', async (req, res) => {
+  const { email, scanId } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+  const scan = scanId ? scanHistory.find(s => s.id === scanId) : scanHistory[scanHistory.length - 1];
+  if (!scan) return res.status(404).json({ error: 'No scan found' });
+  const prevScans = scanHistory.filter(s => s.url === scan.url && s.id !== scan.id);
+  const prevScan = prevScans.length > 0 ? prevScans[prevScans.length - 1] : null;
+  const html = generateScanEmailHTML(scan, prevScan, { email });
+  const result = await sendAlertEmail(email, `[ComplianceShield] Test Report — ${scan.url} — Score: ${scan.score}/100`, html);
+  res.json({ success: !result.error, result, htmlPreview: html.substring(0, 200) + '...' });
+});
+
+// Send digest on demand
+app.post('/api/email-settings/send-digest', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+  const mons = monitors.filter(m => m.active && m.email === email.toLowerCase().trim());
+  if (mons.length === 0) return res.status(404).json({ error: 'No active monitors found for this email' });
+  
+  const monitorData = mons.map(m => {
+    const prevScans = scanHistory.filter(s => s.url === m.url);
+    const lastTwo = prevScans.slice(-2);
+    return {
+      url: m.url,
+      score: m.lastScore || 0,
+      scoreDiff: lastTwo.length >= 2 ? lastTwo[1].score - lastTwo[0].score : null,
+      issues: lastTwo.length > 0 ? lastTwo[lastTwo.length - 1].summary.issues : 0
+    };
+  });
+
+  const html = generateDigestEmailHTML(email, monitorData);
+  const result = await sendAlertEmail(email, `📊 [ComplianceShield] Accessibility Digest — ${monitorData.length} sites`, html);
+  res.json({ success: !result.error, result, monitors: monitorData.length });
+});
+
 
 app.get('/health', (req, res) => res.json({ status: 'ok', uptime: process.uptime(), monitors: monitors.filter(m => m.active).length, totalScans: scanHistory.length }));
 
