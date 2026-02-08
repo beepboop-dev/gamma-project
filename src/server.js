@@ -45,253 +45,6 @@ const ALERTS_FILE = path.join(DATA_DIR, 'alerts.json');
 let alertPreferences = {};
 try { alertPreferences = JSON.parse(fs.readFileSync(ALERTS_FILE, 'utf8')); } catch(e) {}
 function saveAlerts() { fs.writeFileSync(ALERTS_FILE, JSON.stringify(alertPreferences, null, 2)); }
-// ==================== EMAIL SERVICE ====================
-const nodemailer = require('nodemailer');
-
-// Email settings store (per-monitor email preferences)
-const EMAIL_SETTINGS_FILE = path.join(DATA_DIR, 'email-settings.json');
-let emailSettings = {};
-try { emailSettings = JSON.parse(fs.readFileSync(EMAIL_SETTINGS_FILE, 'utf8')); } catch(e) {}
-function saveEmailSettings() { fs.writeFileSync(EMAIL_SETTINGS_FILE, JSON.stringify(emailSettings, null, 2)); }
-
-// Weekly digest tracking
-const DIGEST_FILE = path.join(DATA_DIR, 'digest-tracking.json');
-let digestTracking = {};
-try { digestTracking = JSON.parse(fs.readFileSync(DIGEST_FILE, 'utf8')); } catch(e) {}
-function saveDigestTracking() { fs.writeFileSync(DIGEST_FILE, JSON.stringify(digestTracking, null, 2)); }
-
-function createTransporter() {
-  const smtpConfig = emailSettings._smtp || {};
-  if (smtpConfig.host && smtpConfig.port) {
-    return nodemailer.createTransport({
-      host: smtpConfig.host,
-      port: parseInt(smtpConfig.port),
-      secure: smtpConfig.secure !== false,
-      auth: smtpConfig.user ? { user: smtpConfig.user, pass: smtpConfig.pass } : undefined
-    });
-  }
-  // No SMTP configured - return null (will log to console)
-  return null;
-}
-
-function generateScanEmailHTML(scan, prevScan, monitor) {
-  const scoreColor = scan.score >= 80 ? '#00b894' : scan.score >= 50 ? '#f39c12' : '#e74c3c';
-  const statusMap = {
-    'compliant': { text: 'COMPLIANT', color: '#00b894', icon: '✅' },
-    'needs-improvement': { text: 'NEEDS IMPROVEMENT', color: '#f39c12', icon: '⚠️' },
-    'partially-compliant': { text: 'PARTIALLY COMPLIANT', color: '#f1c40f', icon: '⚠️' },
-    'non-compliant': { text: 'NON-COMPLIANT', color: '#e74c3c', icon: '❌' }
-  };
-  const status = statusMap[scan.complianceLevel] || statusMap['non-compliant'];
-
-  let comparisonHTML = '';
-  if (prevScan) {
-    const scoreDiff = scan.score - prevScan.score;
-    const issuesDiff = scan.summary.issues - prevScan.summary.issues;
-    const arrow = scoreDiff > 0 ? '📈' : scoreDiff < 0 ? '📉' : '➡️';
-    const diffColor = scoreDiff > 0 ? '#00b894' : scoreDiff < 0 ? '#e74c3c' : '#888';
-    
-    const prevIssueIds = new Set(prevScan.issues.map(i => i.id));
-    const currIssueIds = new Set(scan.issues.map(i => i.id));
-    const fixed = [...prevIssueIds].filter(id => !currIssueIds.has(id));
-    const newIssues = [...currIssueIds].filter(id => !prevIssueIds.has(id));
-
-    comparisonHTML = `
-    <div style="background:#1a1a2e;border-radius:12px;padding:20px;margin:20px 0">
-      <h3 style="color:white;margin:0 0 12px;font-size:16px">${arrow} Change Since Last Scan</h3>
-      <table style="width:100%;border-collapse:collapse">
-        <tr>
-          <td style="padding:8px 12px;color:#888;font-size:14px">Score Change</td>
-          <td style="padding:8px 12px;color:${diffColor};font-weight:700;font-size:18px;text-align:right">${scoreDiff > 0 ? '+' : ''}${scoreDiff} points</td>
-        </tr>
-        <tr>
-          <td style="padding:8px 12px;color:#888;font-size:14px">Issues Change</td>
-          <td style="padding:8px 12px;color:${issuesDiff < 0 ? '#00b894' : issuesDiff > 0 ? '#e74c3c' : '#888'};font-weight:600;text-align:right">${issuesDiff > 0 ? '+' : ''}${issuesDiff}</td>
-        </tr>
-        ${fixed.length > 0 ? '<tr><td style="padding:8px 12px;color:#00b894;font-size:14px">✅ Fixed</td><td style="padding:8px 12px;color:#00b894;font-size:13px;text-align:right">' + fixed.join(', ') + '</td></tr>' : ''}
-        ${newIssues.length > 0 ? '<tr><td style="padding:8px 12px;color:#e74c3c;font-size:14px">🆕 New Issues</td><td style="padding:8px 12px;color:#e74c3c;font-size:13px;text-align:right">' + newIssues.join(', ') + '</td></tr>' : ''}
-      </table>
-    </div>`;
-  }
-
-  const criticalIssues = scan.issues.filter(i => i.impact === 'critical');
-  let criticalHTML = '';
-  if (criticalIssues.length > 0) {
-    criticalHTML = `
-    <div style="background:rgba(231,76,60,0.1);border:1px solid #e74c3c;border-radius:12px;padding:20px;margin:20px 0">
-      <h3 style="color:#e74c3c;margin:0 0 12px;font-size:16px">🚨 Critical Issues (${criticalIssues.length})</h3>
-      ${criticalIssues.map(i => `
-        <div style="padding:8px 0;border-bottom:1px solid rgba(231,76,60,0.2)">
-          <div style="color:white;font-weight:600;font-size:14px">${i.name}</div>
-          <div style="color:#888;font-size:12px">${i.wcag} — ${i.count} occurrence${i.count > 1 ? 's' : ''}</div>
-        </div>
-      `).join('')}
-    </div>`;
-  }
-
-  const topIssues = scan.issues.slice(0, 5).filter(i => i.impact !== 'critical');
-  let issuesHTML = '';
-  if (topIssues.length > 0) {
-    const impactColors = { serious: '#f39c12', moderate: '#f1c40f', minor: '#888' };
-    issuesHTML = `
-    <div style="margin:20px 0">
-      <h3 style="color:white;margin:0 0 12px;font-size:16px">Top Issues to Fix</h3>
-      ${topIssues.map(i => `
-        <div style="padding:10px 14px;background:#1a1a2e;border-radius:8px;margin-bottom:6px;border-left:3px solid ${impactColors[i.impact] || '#888'}">
-          <div style="color:white;font-weight:600;font-size:13px">${i.name} <span style="color:${impactColors[i.impact] || '#888'};font-size:11px;text-transform:uppercase">(${i.impact})</span></div>
-          <div style="color:#888;font-size:12px">${i.wcag} — ${i.count} found</div>
-        </div>
-      `).join('')}
-    </div>`;
-  }
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#0a0a0f;font-family:-apple-system,'Inter','Segoe UI',Helvetica,Arial,sans-serif">
-<div style="max-width:600px;margin:0 auto;background:#12121a;border-radius:16px;overflow:hidden;border:1px solid #1e1e2e">
-  <!-- Header -->
-  <div style="background:linear-gradient(135deg,#6c5ce7,#a29bfe);padding:32px;text-align:center">
-    <div style="font-size:32px;margin-bottom:8px">🛡️</div>
-    <h1 style="color:white;margin:0;font-size:24px;font-weight:800">ComplianceShield</h1>
-    <p style="color:rgba(255,255,255,0.8);margin:4px 0 0;font-size:14px">Accessibility Scan Report</p>
-  </div>
-  
-  <!-- Score -->
-  <div style="padding:32px;text-align:center">
-    <p style="color:#888;margin:0 0 4px;font-size:13px">Scan completed ${new Date(scan.scannedAt).toLocaleString()}</p>
-    <p style="color:#a29bfe;margin:0 0 20px;font-size:14px;word-break:break-all">${scan.url}</p>
-    
-    <div style="display:inline-block;width:120px;height:120px;border-radius:50%;border:6px solid ${scoreColor};text-align:center;line-height:108px">
-      <span style="font-size:42px;font-weight:800;color:${scoreColor}">${scan.score}</span>
-    </div>
-    <p style="color:#888;margin:8px 0 0;font-size:13px">out of 100</p>
-    
-    <div style="display:inline-block;background:${status.color}22;border:1px solid ${status.color};border-radius:8px;padding:8px 20px;margin-top:16px">
-      <span style="color:${status.color};font-weight:700;font-size:14px">${status.icon} ${status.text}</span>
-    </div>
-  </div>
-
-  <!-- Stats -->
-  <div style="display:flex;padding:0 32px 24px;gap:8px">
-    <div style="flex:1;background:#0a0a0f;border-radius:10px;padding:16px;text-align:center">
-      <div style="font-size:24px;font-weight:800;color:#e74c3c">${scan.summary.issues}</div>
-      <div style="font-size:11px;color:#888;text-transform:uppercase">Issues</div>
-    </div>
-    <div style="flex:1;background:#0a0a0f;border-radius:10px;padding:16px;text-align:center">
-      <div style="font-size:24px;font-weight:800;color:#e74c3c">${scan.summary.critical}</div>
-      <div style="font-size:11px;color:#888;text-transform:uppercase">Critical</div>
-    </div>
-    <div style="flex:1;background:#0a0a0f;border-radius:10px;padding:16px;text-align:center">
-      <div style="font-size:24px;font-weight:800;color:#00b894">${scan.summary.passed}</div>
-      <div style="font-size:11px;color:#888;text-transform:uppercase">Passed</div>
-    </div>
-    <div style="flex:1;background:#0a0a0f;border-radius:10px;padding:16px;text-align:center">
-      <div style="font-size:24px;font-weight:800;color:#f39c12">${scan.summary.warnings}</div>
-      <div style="font-size:11px;color:#888;text-transform:uppercase">Warnings</div>
-    </div>
-  </div>
-
-  ${comparisonHTML}
-  
-  <div style="padding:0 32px">
-    ${criticalHTML}
-    ${issuesHTML}
-  </div>
-
-  <!-- CTA -->
-  <div style="padding:24px 32px;text-align:center">
-    <a href="https://gamma.abapture.ai/?scan=${encodeURIComponent(scan.url)}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#6c5ce7,#a29bfe);color:white;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px">View Full Report →</a>
-  </div>
-
-  <!-- Footer -->
-  <div style="padding:24px 32px;border-top:1px solid #1e1e2e;text-align:center">
-    <p style="color:#666;font-size:12px;margin:0">You're receiving this because you set up monitoring on ComplianceShield.</p>
-    <p style="color:#666;font-size:12px;margin:4px 0 0"><a href="https://gamma.abapture.ai" style="color:#6c5ce7">gamma.abapture.ai</a> · <a href="https://gamma.abapture.ai/api/monitor/unsubscribe?email=${encodeURIComponent(monitor?.email || '')}" style="color:#888">Unsubscribe</a></p>
-  </div>
-</div>
-</body></html>`;
-}
-
-function generateDigestEmailHTML(email, monitorData) {
-  const rows = monitorData.map(m => {
-    const scoreColor = m.score >= 80 ? '#00b894' : m.score >= 50 ? '#f39c12' : '#e74c3c';
-    const diffText = m.scoreDiff !== null ? (m.scoreDiff > 0 ? '+' + m.scoreDiff : '' + m.scoreDiff) : 'N/A';
-    const diffColor = m.scoreDiff > 0 ? '#00b894' : m.scoreDiff < 0 ? '#e74c3c' : '#888';
-    return `<tr>
-      <td style="padding:12px;border-bottom:1px solid #1e1e2e;color:white;font-size:13px;word-break:break-all">${m.url}</td>
-      <td style="padding:12px;border-bottom:1px solid #1e1e2e;color:${scoreColor};font-weight:700;text-align:center;font-size:16px">${m.score}</td>
-      <td style="padding:12px;border-bottom:1px solid #1e1e2e;color:${diffColor};text-align:center;font-weight:600">${diffText}</td>
-      <td style="padding:12px;border-bottom:1px solid #1e1e2e;color:#888;text-align:center;font-size:13px">${m.issues}</td>
-    </tr>`;
-  }).join('');
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#0a0a0f;font-family:-apple-system,'Inter','Segoe UI',Helvetica,Arial,sans-serif">
-<div style="max-width:600px;margin:0 auto;background:#12121a;border-radius:16px;overflow:hidden;border:1px solid #1e1e2e">
-  <div style="background:linear-gradient(135deg,#6c5ce7,#a29bfe);padding:32px;text-align:center">
-    <div style="font-size:32px;margin-bottom:8px">🛡️</div>
-    <h1 style="color:white;margin:0;font-size:24px;font-weight:800">Weekly Accessibility Digest</h1>
-    <p style="color:rgba(255,255,255,0.8);margin:4px 0 0;font-size:14px">${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-  </div>
-  <div style="padding:24px 32px">
-    <p style="color:#888;font-size:14px;margin:0 0 16px">Here's your weekly summary of ${monitorData.length} monitored site${monitorData.length > 1 ? 's' : ''}:</p>
-    <table style="width:100%;border-collapse:collapse;background:#0a0a0f;border-radius:10px;overflow:hidden">
-      <tr style="background:#1a1a2e">
-        <th style="padding:10px 12px;text-align:left;color:#888;font-size:12px;text-transform:uppercase">Site</th>
-        <th style="padding:10px 12px;text-align:center;color:#888;font-size:12px;text-transform:uppercase">Score</th>
-        <th style="padding:10px 12px;text-align:center;color:#888;font-size:12px;text-transform:uppercase">Change</th>
-        <th style="padding:10px 12px;text-align:center;color:#888;font-size:12px;text-transform:uppercase">Issues</th>
-      </tr>
-      ${rows}
-    </table>
-  </div>
-  <div style="padding:24px 32px;text-align:center">
-    <a href="https://gamma.abapture.ai" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#6c5ce7,#a29bfe);color:white;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px">View Dashboard →</a>
-  </div>
-  <div style="padding:20px 32px;border-top:1px solid #1e1e2e;text-align:center">
-    <p style="color:#666;font-size:12px;margin:0"><a href="https://gamma.abapture.ai" style="color:#6c5ce7">ComplianceShield</a> · <a href="https://gamma.abapture.ai/api/monitor/unsubscribe?email=${encodeURIComponent(email)}" style="color:#888">Unsubscribe</a></p>
-  </div>
-</div>
-</body></html>`;
-}
-
-async function sendAlertEmail(to, subject, html) {
-  const transporter = createTransporter();
-  const fromAddr = (emailSettings._smtp && emailSettings._smtp.from) || 'ComplianceShield <alerts@complianceshield.io>';
-  
-  if (!transporter) {
-    console.log('[Email] SMTP not configured — logging email to console');
-    console.log('[Email] To:', to);
-    console.log('[Email] Subject:', subject);
-    console.log('[Email] HTML length:', html.length);
-    console.log('[Email] HTML preview:', html.substring(0, 500) + '...');
-    return { logged: true, to, subject };
-  }
-
-  try {
-    const info = await transporter.sendMail({ from: fromAddr, to, subject, html });
-    console.log('[Email] Sent to', to, '- messageId:', info.messageId);
-    return { sent: true, messageId: info.messageId };
-  } catch(e) {
-    console.error('[Email] Failed to send to', to, ':', e.message);
-    return { error: e.message };
-  }
-}
-
-function shouldNotifyScoreDrop(currentScore, previousScore) {
-  if (previousScore === null || previousScore === undefined) return false;
-  return (previousScore - currentScore) > 5;
-}
-
-function hasNewCriticalIssues(currentScan, prevScan) {
-  if (!prevScan) return currentScan.issues.some(i => i.impact === 'critical');
-  const prevCritical = new Set(prevScan.issues.filter(i => i.impact === 'critical').map(i => i.id));
-  return currentScan.issues.filter(i => i.impact === 'critical').some(i => !prevCritical.has(i.id));
-}
-
 function saveMonitors() { fs.writeFileSync(MONITORS_FILE, JSON.stringify(monitors, null, 2)); }
 
 // ==================== WCAG RULES ====================
@@ -434,6 +187,90 @@ const WCAG_RULES = {
     wcag: 'WCAG 2.1 SC 2.1.1', level: 'A', principle: 'Operable',
     description: 'Elements with click handlers (onclick) that are not natively interactive (links, buttons) must also have keyboard access via tabindex and keydown handlers.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/keyboard.html'
+  },
+  'duplicate-id': {
+    id: 'duplicate-id', name: 'Duplicate element IDs',
+    wcag: 'WCAG 2.1 SC 4.1.1', level: 'A', principle: 'Robust',
+    description: 'Element IDs must be unique. Duplicate IDs break label associations, ARIA references, and fragment navigation.',
+    impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/parsing.html'
+  },
+  'invalid-aria-role': {
+    id: 'invalid-aria-role', name: 'Invalid ARIA roles',
+    wcag: 'WCAG 2.1 SC 4.1.2', level: 'A', principle: 'Robust',
+    description: 'ARIA role values must be valid WAI-ARIA roles. Invalid roles are ignored by assistive technology.',
+    impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html'
+  },
+  'aria-hidden-focus': {
+    id: 'aria-hidden-focus', name: 'Focusable elements hidden from assistive tech',
+    wcag: 'WCAG 2.1 SC 4.1.2', level: 'A', principle: 'Robust',
+    description: 'Elements with aria-hidden="true" must not contain focusable elements, as they become invisible to screen readers but still receive focus.',
+    impact: 'critical', url: 'https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html'
+  },
+  'missing-aria-label': {
+    id: 'missing-aria-label', name: 'ARIA widgets missing accessible names',
+    wcag: 'WCAG 2.1 SC 4.1.2', level: 'A', principle: 'Robust',
+    description: 'Elements with interactive ARIA roles (dialog, alertdialog, tabpanel) must have an accessible name via aria-label or aria-labelledby.',
+    impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html'
+  },
+  'viewport-scalable-no': {
+    id: 'viewport-scalable-no', name: 'Text resize disabled',
+    wcag: 'WCAG 2.1 SC 1.4.4', level: 'AA', principle: 'Perceivable',
+    description: 'The viewport meta tag must not set user-scalable=no or maximum-scale less than 2, as this prevents users from zooming.',
+    impact: 'critical', url: 'https://www.w3.org/WAI/WCAG21/Understanding/resize-text.html'
+  },
+  'image-map-no-alt': {
+    id: 'image-map-no-alt', name: 'Image map areas missing alt text',
+    wcag: 'WCAG 2.1 SC 1.1.1', level: 'A', principle: 'Perceivable',
+    description: 'Each <area> in an image map must have alt text describing its purpose.',
+    impact: 'critical', url: 'https://www.w3.org/WAI/WCAG21/Understanding/non-text-content.html'
+  },
+  'link-new-window': {
+    id: 'link-new-window', name: 'Links open new window without warning',
+    wcag: 'WCAG 2.1 SC 3.2.5', level: 'AAA', principle: 'Understandable',
+    description: 'Links that open in a new window/tab (target="_blank") should warn users, e.g., "(opens in new tab)".',
+    impact: 'minor', url: 'https://www.w3.org/WAI/WCAG21/Understanding/change-on-request.html'
+  },
+  'missing-table-caption': {
+    id: 'missing-table-caption', name: 'Data tables missing captions',
+    wcag: 'WCAG 2.1 SC 1.3.1', level: 'A', principle: 'Perceivable',
+    description: 'Data tables should have a <caption> element describing the table\'s purpose for screen reader users.',
+    impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html'
+  },
+  'iframe-no-title': {
+    id: 'iframe-no-title', name: 'Iframes missing title attribute',
+    wcag: 'WCAG 2.1 SC 2.4.1', level: 'A', principle: 'Operable',
+    description: 'Each iframe must have a title attribute that describes its content for screen reader users.',
+    impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/bypass-blocks.html'
+  },
+  'accesskey-duplicate': {
+    id: 'accesskey-duplicate', name: 'Duplicate accesskey values',
+    wcag: 'WCAG 2.1 SC 4.1.1', level: 'A', principle: 'Robust',
+    description: 'Accesskey values must be unique. Duplicates cause unpredictable behavior for keyboard users.',
+    impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/parsing.html'
+  },
+  'marquee-blink': {
+    id: 'marquee-blink', name: 'Marquee or blink elements',
+    wcag: 'WCAG 2.1 SC 2.2.2', level: 'A', principle: 'Operable',
+    description: 'Moving, blinking, or scrolling content (marquee, blink) must have a mechanism to pause, stop, or hide.',
+    impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/pause-stop-hide.html'
+  },
+  'autocomplete-missing': {
+    id: 'autocomplete-missing', name: 'Input fields missing autocomplete',
+    wcag: 'WCAG 2.1 SC 1.3.5', level: 'AA', principle: 'Perceivable',
+    description: 'Form fields that collect personal information should have appropriate autocomplete attributes to help users fill them.',
+    impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/identify-input-purpose.html'
+  },
+  'text-justified': {
+    id: 'text-justified', name: 'Justified text blocks',
+    wcag: 'WCAG 2.1 SC 1.4.8', level: 'AAA', principle: 'Perceivable',
+    description: 'Fully justified text creates uneven spacing that can be difficult to read for users with cognitive disabilities.',
+    impact: 'minor', url: 'https://www.w3.org/WAI/WCAG21/Understanding/visual-presentation.html'
+  },
+  'title-redundant': {
+    id: 'title-redundant', name: 'Redundant title attributes',
+    wcag: 'WCAG 2.1 SC 4.1.2', level: 'A', principle: 'Robust',
+    description: 'Title attributes that duplicate visible text create redundant announcements for screen reader users.',
+    impact: 'minor', url: 'https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html'
   }
 };
 
@@ -798,16 +635,203 @@ function scanHTML(html, url) {
   if (noKeyboard.length > 0) addIssue('missing-keyboard-access', noKeyboard);
   else addPass('missing-keyboard-access');
 
-  // Calculate score
-  const totalChecks = issues.length + passes.length;
-  const score = totalChecks > 0 ? Math.round((passes.length / totalChecks) * 100) : 0;
+  // 22. Duplicate IDs
+  const idMap = {};
+  $('[id]').each((i, el) => {
+    const id = $(el).attr('id');
+    if (id) { if (!idMap[id]) idMap[id] = 0; idMap[id]++; }
+  });
+  const dupIds = Object.entries(idMap).filter(([,c]) => c > 1).map(([id, c]) => `id="${id}" used ${c} times`);
+  if (dupIds.length > 0) addIssue('duplicate-id', dupIds);
+  else addPass('duplicate-id');
 
+  // 23. Invalid ARIA roles
+  const validRoles = ['alert','alertdialog','application','article','banner','button','cell','checkbox','columnheader','combobox','complementary','contentinfo','definition','dialog','directory','document','feed','figure','form','grid','gridcell','group','heading','img','link','list','listbox','listitem','log','main','marquee','math','menu','menubar','menuitem','menuitemcheckbox','menuitemradio','navigation','none','note','option','presentation','progressbar','radio','radiogroup','region','row','rowgroup','rowheader','scrollbar','search','searchbox','separator','slider','spinbutton','status','switch','tab','table','tablist','tabpanel','term','textbox','timer','toolbar','tooltip','tree','treegrid','treeitem'];
+  const invalidRoles = [];
+  $('[role]').each((i, el) => {
+    const role = ($(el).attr('role') || '').trim().toLowerCase();
+    if (role && !validRoles.includes(role)) {
+      invalidRoles.push(`<${el.tagName} role="${role}">`);
+    }
+  });
+  if (invalidRoles.length > 0) addIssue('invalid-aria-role', invalidRoles);
+  else addPass('invalid-aria-role');
+
+  // 24. aria-hidden with focusable children
+  const ariaHiddenFocus = [];
+  $('[aria-hidden="true"]').each((i, el) => {
+    const focusable = $(el).find('a[href], button, input, select, textarea, [tabindex]');
+    if (focusable.length > 0) {
+      ariaHiddenFocus.push(`<${el.tagName} aria-hidden="true"> contains ${focusable.length} focusable element(s)`);
+    }
+  });
+  if (ariaHiddenFocus.length > 0) addIssue('aria-hidden-focus', ariaHiddenFocus);
+  else addPass('aria-hidden-focus');
+
+  // 25. ARIA widgets missing accessible names
+  const ariaWidgetRoles = ['dialog', 'alertdialog', 'tabpanel', 'tablist', 'toolbar', 'menu', 'menubar', 'tree', 'grid', 'treegrid', 'listbox'];
+  const missingAriaNames = [];
+  ariaWidgetRoles.forEach(role => {
+    $(`[role="${role}"]`).each((i, el) => {
+      const ariaLabel = $(el).attr('aria-label') || $(el).attr('aria-labelledby') || $(el).attr('title');
+      if (!ariaLabel) {
+        missingAriaNames.push(`<${el.tagName} role="${role}"> missing aria-label`);
+      }
+    });
+  });
+  if (missingAriaNames.length > 0) addIssue('missing-aria-label', missingAriaNames);
+  else addPass('missing-aria-label');
+
+  // 26. Viewport prevents text resize
+  if (viewport) {
+    const scalableNo = viewport.match(/user-scalable\s*=\s*no/i);
+    const maxScaleMatch = viewport.match(/maximum-scale\s*=\s*([\d.]+)/i);
+    const maxScale = maxScaleMatch ? parseFloat(maxScaleMatch[1]) : null;
+    if (scalableNo || (maxScale !== null && maxScale < 2)) {
+      addIssue('viewport-scalable-no', [`<meta name="viewport" content="${viewport.substring(0,80)}">`]);
+    } else {
+      addPass('viewport-scalable-no');
+    }
+  }
+
+  // 27. Image map areas without alt
+  const areaNoAlt = [];
+  $('area').each((i, el) => {
+    const alt = $(el).attr('alt');
+    if (alt === undefined || alt.trim() === '') {
+      const href = ($(el).attr('href') || '').substring(0, 60);
+      areaNoAlt.push(`<area href="${href}"> missing alt`);
+    }
+  });
+  if (areaNoAlt.length > 0) addIssue('image-map-no-alt', areaNoAlt);
+  else if ($('area').length > 0) addPass('image-map-no-alt');
+
+  // 28. Links opening new window without warning
+  const newWindowLinks = [];
+  $('a[target="_blank"]').each((i, el) => {
+    const text = $(el).text().trim().toLowerCase();
+    const ariaLabel = ($(el).attr('aria-label') || '').toLowerCase();
+    const title = ($(el).attr('title') || '').toLowerCase();
+    const combined = text + ' ' + ariaLabel + ' ' + title;
+    if (!combined.match(/new\s*(window|tab)|opens?\s*(in|a)\s*(new|external)|external/i)) {
+      const href = ($(el).attr('href') || '').substring(0, 50);
+      newWindowLinks.push(`"${$(el).text().trim().substring(0,30) || '(no text)'}" → ${href}`);
+    }
+  });
+  if (newWindowLinks.length > 0) addIssue('link-new-window', newWindowLinks);
+  else if ($('a[target="_blank"]').length > 0) addPass('link-new-window');
+
+  // 29. Data tables missing captions
+  const tablesNoCaptions = [];
+  dataTables.each((i, el) => {
+    if ($(el).find('caption').length === 0 && !$(el).attr('aria-label') && !$(el).attr('aria-labelledby')) {
+      tablesNoCaptions.push('<table> without <caption> or aria-label');
+    }
+  });
+  if (tablesNoCaptions.length > 0) addIssue('missing-table-caption', tablesNoCaptions);
+  else if (dataTables.length > 0) addPass('missing-table-caption');
+
+  // 30. Iframes without title
+  const iframeNoTitle = [];
+  $('iframe').each((i, el) => {
+    const t = $(el).attr('title');
+    const ariaLabel = $(el).attr('aria-label');
+    if (!t && !ariaLabel) {
+      const src = ($(el).attr('src') || '').substring(0, 60);
+      iframeNoTitle.push(`<iframe src="${src}"> missing title`);
+    }
+  });
+  if (iframeNoTitle.length > 0) addIssue('iframe-no-title', iframeNoTitle);
+  else if ($('iframe').length > 0) addPass('iframe-no-title');
+
+  // 31. Duplicate accesskey values
+  const accessKeyMap = {};
+  $('[accesskey]').each((i, el) => {
+    const key = $(el).attr('accesskey');
+    if (key) { if (!accessKeyMap[key]) accessKeyMap[key] = 0; accessKeyMap[key]++; }
+  });
+  const dupAccessKeys = Object.entries(accessKeyMap).filter(([,c]) => c > 1).map(([k, c]) => `accesskey="${k}" used ${c} times`);
+  if (dupAccessKeys.length > 0) addIssue('accesskey-duplicate', dupAccessKeys);
+  else if ($('[accesskey]').length > 0) addPass('accesskey-duplicate');
+
+  // 32. Marquee/blink elements
+  const marqueeEls = [];
+  $('marquee, blink').each((i, el) => { marqueeEls.push(`<${el.tagName}>`); });
+  if (marqueeEls.length > 0) addIssue('marquee-blink', marqueeEls);
+  else addPass('marquee-blink');
+
+  // 33. Autocomplete missing on personal info fields
+  const personalInputTypes = { email: 'email', tel: 'tel', password: 'current-password' };
+  const personalNames = { name: 'name', email: 'email', phone: 'tel', address: 'street-address', city: 'address-level2', state: 'address-level1', zip: 'postal-code', 'postal-code': 'postal-code', 'first-name': 'given-name', 'last-name': 'family-name', firstname: 'given-name', lastname: 'family-name', 'cc-number': 'cc-number' };
+  const missingAC = [];
+  $('input').each((i, el) => {
+    const type = $(el).attr('type') || 'text';
+    const name = ($(el).attr('name') || '').toLowerCase();
+    const ac = $(el).attr('autocomplete');
+    if (['hidden', 'submit', 'button', 'reset', 'checkbox', 'radio', 'file', 'image'].includes(type)) return;
+    if (!ac && (personalInputTypes[type] || Object.keys(personalNames).some(p => name.includes(p)))) {
+      missingAC.push(`<input name="${$(el).attr('name') || ''}" type="${type}"> missing autocomplete`);
+    }
+  });
+  if (missingAC.length > 0) addIssue('autocomplete-missing', missingAC);
+  else addPass('autocomplete-missing');
+
+  // 34. Justified text
+  const justifiedText = [];
+  $('[style]').each((i, el) => {
+    const style = $(el).attr('style') || '';
+    if (style.match(/text-align\s*:\s*justify/i)) {
+      const text = $(el).text().trim().substring(0, 40);
+      justifiedText.push(`<${el.tagName}> "${text || '(element)'}"`);
+    }
+  });
+  // Also check style tags
+  if (stylesheetText.match(/text-align\s*:\s*justify/i)) {
+    justifiedText.push('CSS rule with text-align: justify');
+  }
+  if (justifiedText.length > 0) addIssue('text-justified', justifiedText);
+  else addPass('text-justified');
+
+  // 35. Redundant title attributes
+  const redundantTitles = [];
+  $('a[title], button[title]').each((i, el) => {
+    const text = $(el).text().trim();
+    const titleAttr = ($(el).attr('title') || '').trim();
+    if (text && titleAttr && text.toLowerCase() === titleAttr.toLowerCase()) {
+      redundantTitles.push(`<${el.tagName}> text="${text.substring(0,30)}" title="${titleAttr.substring(0,30)}"`);
+    }
+  });
+  if (redundantTitles.length > 0) addIssue('title-redundant', redundantTitles);
+  else addPass('title-redundant');
+
+  // Calculate score (weighted by impact)
+  const impactWeights = { critical: 5, serious: 3, moderate: 1.5, minor: 0.5 };
+  let totalWeight = 0;
+  let passedWeight = 0;
+  issues.forEach(i => { totalWeight += (impactWeights[i.impact] || 1); });
+  passes.forEach(p => {
+    const rule = WCAG_RULES[p.id];
+    const w = rule ? (impactWeights[rule.impact] || 1) : 1;
+    totalWeight += w;
+    passedWeight += w;
+  });
+  const score = totalWeight > 0 ? Math.round((passedWeight / totalWeight) * 100) : 100;
+
+  const totalChecks = issues.length + passes.length;
   const criticalIssues = issues.filter(i => i.impact === 'critical').length;
   const seriousIssues = issues.filter(i => i.impact === 'serious').length;
   let complianceLevel = 'compliant';
   if (criticalIssues > 0) complianceLevel = 'non-compliant';
   else if (seriousIssues > 1) complianceLevel = 'partially-compliant';
   else if (issues.length > 0) complianceLevel = 'needs-improvement';
+
+  // Conformance levels
+  const levelAIssues = issues.filter(i => i.level === 'A');
+  const levelAAIssues = issues.filter(i => i.level === 'AA');
+  const levelAAAIssues = issues.filter(i => i.level === 'AAA');
+  const conformsA = levelAIssues.length === 0;
+  const conformsAA = conformsA && levelAAIssues.length === 0;
+  const conformsAAA = conformsAA && levelAAAIssues.length === 0;
 
   return {
     url,
@@ -824,6 +848,14 @@ function scanHTML(html, url) {
       moderate: issues.filter(i => i.impact === 'moderate').length,
       minor: issues.filter(i => i.impact === 'minor').length
     },
+    conformance: {
+      levelA: conformsA,
+      levelAA: conformsAA,
+      levelAAA: conformsAAA,
+      levelAIssues: levelAIssues.length,
+      levelAAIssues: levelAAIssues.length,
+      levelAAAIssues: levelAAAIssues.length
+    },
     issues,
     warnings,
     passes,
@@ -839,7 +871,254 @@ function scanHTML(html, url) {
   };
 }
 
+// ==================== REMEDIATION GUIDE GENERATOR ====================
+const REMEDIATION_GUIDES = {
+  'missing-alt': {
+    priority: 'CRITICAL — Fix immediately',
+    legalRisk: 'HIGH — #1 cited violation in ADA lawsuits (83% of cases)',
+    fixTime: '2-5 minutes per image',
+    steps: [
+      'Identify each image without alt text',
+      'Determine if the image is decorative or informational',
+      'For informational images: add alt="description of what the image shows"',
+      'For decorative images: add alt="" and role="presentation"',
+      'For complex images (charts, infographics): add alt with summary + link to long description'
+    ],
+    codeExample: `<!-- BEFORE (violation) -->\n<img src="team-photo.jpg">\n\n<!-- AFTER (fixed) -->\n<img src="team-photo.jpg" alt="Our team of 12 engineers at the 2024 company retreat">`,
+    testHow: 'Use a screen reader (VoiceOver on Mac: Cmd+F5, NVDA on Windows) to verify images are announced correctly.',
+    commonMistake: 'Don\'t use alt="image" or alt="photo" — describe what the image actually shows.'
+  },
+  'missing-form-label': {
+    priority: 'CRITICAL — Fix immediately',
+    legalRisk: 'HIGH — Unlabeled forms make sites unusable for screen readers',
+    fixTime: '1-3 minutes per input',
+    steps: [
+      'Find each <input>, <select>, or <textarea> without an associated <label>',
+      'Add a <label> element with a for="id" matching the input\'s id',
+      'Alternatively, wrap the input inside the <label> element',
+      'For inputs where a visible label isn\'t appropriate, use aria-label'
+    ],
+    codeExample: `<!-- BEFORE (violation) -->\n<input type="email" placeholder="Enter email">\n\n<!-- AFTER (fixed — option 1: explicit label) -->\n<label for="email-input">Email address</label>\n<input type="email" id="email-input" placeholder="Enter email">\n\n<!-- AFTER (fixed — option 2: wrapping label) -->\n<label>Email address <input type="email" placeholder="Enter email"></label>\n\n<!-- AFTER (fixed — option 3: aria-label for icon buttons) -->\n<input type="search" aria-label="Search products">`,
+    testHow: 'Click the label text — if the cursor moves to the input, the label is properly associated.',
+    commonMistake: 'placeholder is NOT a substitute for a label. Screen readers may not announce placeholders.'
+  },
+  'empty-link': {
+    priority: 'HIGH — Fix this week',
+    legalRisk: 'HIGH — Screen reader users cannot determine link purpose',
+    fixTime: '1-2 minutes per link',
+    steps: [
+      'Find links with no text content (often icon-only links)',
+      'Add descriptive text inside the link, or use aria-label',
+      'For icon links, add visually-hidden text via CSS'
+    ],
+    codeExample: `<!-- BEFORE (violation) -->\n<a href="/cart"><i class="icon-cart"></i></a>\n\n<!-- AFTER (fixed) -->\n<a href="/cart" aria-label="Shopping cart (3 items)"><i class="icon-cart"></i></a>\n\n<!-- Or with visually hidden text -->\n<a href="/cart"><i class="icon-cart"></i><span class="sr-only">Shopping cart</span></a>`,
+    testHow: 'Tab to the link with keyboard — a screen reader should announce its purpose.',
+    commonMistake: 'Don\'t use aria-label="link" or aria-label="click" — describe the destination.'
+  },
+  'empty-button': {
+    priority: 'CRITICAL — Fix immediately',
+    legalRisk: 'HIGH — Users cannot interact with unlabeled buttons',
+    fixTime: '1-2 minutes per button',
+    steps: [
+      'Find buttons with no text content',
+      'Add descriptive text inside the button, or use aria-label',
+      'For icon buttons, add visually-hidden text'
+    ],
+    codeExample: `<!-- BEFORE (violation) -->\n<button><svg class="close-icon">...</svg></button>\n\n<!-- AFTER (fixed) -->\n<button aria-label="Close dialog"><svg class="close-icon">...</svg></button>`,
+    testHow: 'Use a screen reader to verify the button\'s purpose is announced.',
+    commonMistake: 'Don\'t label buttons with just "button" or "submit" — describe the action.'
+  },
+  'missing-lang': {
+    priority: 'HIGH — Quick 30-second fix',
+    legalRisk: 'MEDIUM — Screen readers may mispronounce all content',
+    fixTime: '30 seconds',
+    steps: [
+      'Add a lang attribute to your <html> element',
+      'Use the correct BCP 47 language code (en, es, fr, de, etc.)'
+    ],
+    codeExample: `<!-- BEFORE (violation) -->\n<html>\n\n<!-- AFTER (fixed) -->\n<html lang="en">`,
+    testHow: 'View page source and confirm <html lang="..."> is present.',
+    commonMistake: 'If your page has content in multiple languages, use lang on specific elements too.'
+  },
+  'missing-title': {
+    priority: 'HIGH — Quick 1-minute fix',
+    legalRisk: 'MEDIUM — Users can\'t identify the page in tabs or history',
+    fixTime: '1 minute',
+    steps: ['Add a descriptive <title> in your <head> section', 'Make it unique per page', 'Include the site name after a separator'],
+    codeExample: `<!-- BEFORE (violation) -->\n<head><meta charset="UTF-8"></head>\n\n<!-- AFTER (fixed) -->\n<head>\n  <meta charset="UTF-8">\n  <title>Contact Us | YourCompany</title>\n</head>`,
+    testHow: 'Check the browser tab — it should show a meaningful title.',
+    commonMistake: 'Don\'t use the same title on every page. Each page should have a unique, descriptive title.'
+  },
+  'low-contrast-text': {
+    priority: 'HIGH — Fix this week',
+    legalRisk: 'HIGH — Second most cited violation in ADA lawsuits',
+    fixTime: '5-15 minutes',
+    steps: [
+      'Use a contrast checker tool (WebAIM Contrast Checker)',
+      'Normal text needs 4.5:1 ratio minimum',
+      'Large text (18px+ bold or 24px+ regular) needs 3:1 ratio',
+      'Adjust text color or background color to meet requirements'
+    ],
+    codeExample: `/* BEFORE (violation — ratio 2.5:1) */\ncolor: #999; background: #fff;\n\n/* AFTER (fixed — ratio 7:1) */\ncolor: #595959; background: #fff;`,
+    testHow: 'Use browser DevTools → Accessibility panel or WebAIM\'s contrast checker.',
+    commonMistake: 'Light gray on white is the #1 offender. When in doubt, go darker.'
+  },
+  'missing-heading': {
+    priority: 'MEDIUM — Fix in next sprint',
+    legalRisk: 'MEDIUM — Affects navigability for screen reader users',
+    fixTime: '10-30 minutes',
+    steps: ['Add an H1 for the page\'s main topic', 'Structure content with H2-H6 in hierarchical order', 'Don\'t skip levels (H1 → H3 without H2)'],
+    codeExample: `<h1>Product Catalog</h1>\n  <h2>Electronics</h2>\n    <h3>Smartphones</h3>\n    <h3>Laptops</h3>\n  <h2>Clothing</h2>`,
+    testHow: 'Install the HeadingsMap browser extension to visualize your heading structure.',
+    commonMistake: 'Don\'t use headings just for visual styling. Use CSS for that. Headings are for structure.'
+  },
+  'no-skip-link': {
+    priority: 'MEDIUM — Fix in next sprint',
+    legalRisk: 'MEDIUM — Keyboard users must tab through nav on every page',
+    fixTime: '5-10 minutes',
+    steps: ['Add a skip link as the first focusable element on the page', 'Link it to your main content area', 'Make it visible on focus (can be visually hidden until focused)'],
+    codeExample: `<body>\n  <a href="#main-content" class="skip-link">Skip to main content</a>\n  <nav>...navigation...</nav>\n  <main id="main-content">...content...</main>\n</body>\n\n<style>\n.skip-link { position: absolute; left: -9999px; }\n.skip-link:focus { position: static; }\n</style>`,
+    testHow: 'Press Tab immediately after the page loads — the skip link should appear.',
+    commonMistake: 'Make sure the skip link target (#main-content) actually exists on the page.'
+  },
+  'missing-landmark': {
+    priority: 'MEDIUM — Fix in next sprint',
+    legalRisk: 'LOW — But improves overall navigation significantly',
+    fixTime: '10-20 minutes',
+    steps: ['Use HTML5 semantic elements: <header>, <nav>, <main>, <footer>', 'Ensure there is exactly one <main> element', 'Use <nav> for primary navigation, <aside> for sidebars'],
+    codeExample: `<body>\n  <header>...logo, nav...</header>\n  <nav aria-label="Main navigation">...links...</nav>\n  <main>...page content...</main>\n  <aside>...sidebar...</aside>\n  <footer>...footer content...</footer>\n</body>`,
+    testHow: 'Use a screen reader\'s landmarks shortcut (NVDA: D key, VoiceOver: rotor) to navigate.',
+    commonMistake: 'Don\'t use <div class="header"> when you can use <header>.'
+  },
+  'viewport-scalable-no': {
+    priority: 'CRITICAL — Fix immediately',
+    legalRisk: 'HIGH — Prevents users from zooming text',
+    fixTime: '1 minute',
+    steps: ['Remove user-scalable=no from your viewport meta tag', 'Remove or increase maximum-scale to at least 5'],
+    codeExample: `<!-- BEFORE (violation) -->\n<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1">\n\n<!-- AFTER (fixed) -->\n<meta name="viewport" content="width=device-width, initial-scale=1">`,
+    testHow: 'On a mobile device, try pinch-to-zoom. If it doesn\'t work, the restriction is still active.',
+    commonMistake: 'Some CSS frameworks add this by default. Check your template/boilerplate.'
+  },
+  'missing-focus-style': {
+    priority: 'HIGH — Fix this week',
+    legalRisk: 'HIGH — Keyboard users cannot see where they are on the page',
+    fixTime: '5-10 minutes',
+    steps: ['Remove any outline:none or outline:0 CSS rules', 'Add a visible focus style for interactive elements', 'Use :focus-visible for modern browsers to only show focus on keyboard navigation'],
+    codeExample: `/* BEFORE (violation) */\n*:focus { outline: none; }\n\n/* AFTER (fixed) */\n*:focus-visible {\n  outline: 2px solid #4A90D9;\n  outline-offset: 2px;\n}`,
+    testHow: 'Tab through your page — every interactive element should have a visible outline/ring.',
+    commonMistake: 'Designers often remove outlines for aesthetics. :focus-visible is the compromise.'
+  },
+  'duplicate-id': {
+    priority: 'HIGH — Fix this week',
+    legalRisk: 'MEDIUM — Breaks label associations and ARIA references',
+    fixTime: '5-15 minutes',
+    steps: ['Search your HTML for duplicate id values', 'Make each id unique', 'Update any references (label for, aria-labelledby, etc.)'],
+    codeExample: `<!-- BEFORE (violation) -->\n<input id="name" ...> <!-- in form 1 -->\n<input id="name" ...> <!-- in form 2 -->\n\n<!-- AFTER (fixed) -->\n<input id="billing-name" ...>\n<input id="shipping-name" ...>`,
+    testHow: 'Run document.querySelectorAll("[id]") in console and check for duplicates.',
+    commonMistake: 'This often happens with repeated components/templates. Use unique prefixes.'
+  },
+  'generic-link-text': {
+    priority: 'MEDIUM — Fix in next sprint',
+    legalRisk: 'MEDIUM — "Click here" links are meaningless out of context',
+    fixTime: '2-5 minutes per link',
+    steps: ['Replace "click here", "read more", "learn more" with descriptive text', 'The link text alone should explain the destination'],
+    codeExample: `<!-- BEFORE (violation) -->\nTo see our pricing, <a href="/pricing">click here</a>.\n\n<!-- AFTER (fixed) -->\n<a href="/pricing">View our pricing plans</a>.`,
+    testHow: 'Read just the link text aloud — does it make sense without surrounding text?',
+    commonMistake: 'Screen reader users often navigate by listing all links. "Click here" x20 is useless.'
+  },
+  'iframe-no-title': {
+    priority: 'HIGH — Fix this week',
+    legalRisk: 'MEDIUM — Screen readers announce "frame" with no description',
+    fixTime: '1 minute per iframe',
+    steps: ['Add a title attribute to each iframe describing its content'],
+    codeExample: `<!-- BEFORE -->\n<iframe src="https://maps.google.com/..."></iframe>\n\n<!-- AFTER -->\n<iframe src="https://maps.google.com/..." title="Google Maps showing our office location"></iframe>`,
+    testHow: 'Use a screen reader — it should announce the iframe\'s purpose.',
+    commonMistake: 'Don\'t use title="iframe" — describe what\'s actually in the iframe.'
+  },
+  'missing-keyboard-access': {
+    priority: 'CRITICAL — Fix immediately',
+    legalRisk: 'HIGH — Entire features become inaccessible to keyboard users',
+    fixTime: '5-10 minutes per element',
+    steps: ['Replace onclick on divs/spans with proper <button> or <a> elements', 'If you must use a non-interactive element, add tabindex="0" and a keydown handler', 'Add role="button" for clickable non-button elements'],
+    codeExample: `<!-- BEFORE (violation) -->\n<div onclick="openMenu()">Menu</div>\n\n<!-- AFTER (fixed — best: use a button) -->\n<button onclick="openMenu()">Menu</button>\n\n<!-- AFTER (fixed — if div required) -->\n<div role="button" tabindex="0" onclick="openMenu()" onkeydown="if(event.key==='Enter'||event.key===' ')openMenu()">Menu</div>`,
+    testHow: 'Unplug your mouse. Can you access everything with just Tab, Enter, and Space?',
+    commonMistake: 'tabindex="0" alone isn\'t enough — you also need keyboard event handlers.'
+  },
+  'aria-hidden-focus': {
+    priority: 'CRITICAL — Fix immediately',
+    legalRisk: 'HIGH — Creates invisible keyboard traps',
+    fixTime: '5-10 minutes',
+    steps: ['Find elements with aria-hidden="true" that contain focusable children', 'Either remove aria-hidden or add tabindex="-1" to all focusable children'],
+    codeExample: `<!-- BEFORE (violation) -->\n<div aria-hidden="true">\n  <button>Close</button>\n</div>\n\n<!-- AFTER (fixed) -->\n<div aria-hidden="true">\n  <button tabindex="-1">Close</button>\n</div>`,
+    testHow: 'Tab through the page — you should never focus something you can\'t see/hear.',
+    commonMistake: 'This often happens with modals that are hidden but still in the DOM.'
+  }
+};
+
+// Generate remediation guide for a scan result
+function generateRemediationGuide(scanResult) {
+  const guides = [];
+  for (const issue of (scanResult.issues || [])) {
+    const guide = REMEDIATION_GUIDES[issue.id];
+    if (guide) {
+      guides.push({
+        ruleId: issue.id,
+        ruleName: issue.name,
+        wcag: issue.wcag,
+        count: issue.count || 1,
+        ...guide
+      });
+    } else {
+      // Generic guide for rules without specific remediation
+      guides.push({
+        ruleId: issue.id,
+        ruleName: issue.name,
+        wcag: issue.wcag,
+        count: issue.count || 1,
+        priority: issue.impact === 'critical' ? 'CRITICAL — Fix immediately' : issue.impact === 'serious' ? 'HIGH — Fix this week' : 'MEDIUM — Fix in next sprint',
+        legalRisk: issue.impact === 'critical' ? 'HIGH' : 'MEDIUM',
+        fixTime: '5-15 minutes',
+        steps: ['Review the WCAG guideline: ' + issue.wcag, 'Identify affected elements', 'Apply the fix described in the WCAG understanding document', 'Test with a screen reader'],
+        codeExample: '',
+        testHow: 'Test with axe DevTools browser extension and a screen reader.',
+        commonMistake: 'Check the WCAG understanding document for common failure patterns.'
+      });
+    }
+  }
+  // Sort by legal risk
+  const riskOrder = { 'HIGH': 0, 'MEDIUM': 1, 'LOW': 2 };
+  guides.sort((a, b) => {
+    const aRisk = Object.keys(riskOrder).find(r => (a.legalRisk || '').startsWith(r)) || 'LOW';
+    const bRisk = Object.keys(riskOrder).find(r => (b.legalRisk || '').startsWith(r)) || 'LOW';
+    return (riskOrder[aRisk] || 2) - (riskOrder[bRisk] || 2);
+  });
+  return guides;
+}
+
 // ==================== API ROUTES ====================
+
+// Remediation guide endpoint
+app.get('/api/scan/:id/remediation', (req, res) => {
+  const scan = scanHistory.find(s => s.id === req.params.id);
+  if (!scan) return res.status(404).json({ error: 'Scan not found' });
+  const guides = generateRemediationGuide(scan);
+  res.json({
+    url: scan.url,
+    scanId: scan.id,
+    score: scan.score,
+    totalIssues: scan.issues ? scan.issues.length : 0,
+    guides,
+    summary: {
+      critical: guides.filter(g => (g.priority || '').startsWith('CRITICAL')).length,
+      high: guides.filter(g => (g.priority || '').startsWith('HIGH')).length,
+      medium: guides.filter(g => (g.priority || '').startsWith('MEDIUM')).length,
+      estimatedFixTime: guides.reduce((acc, g) => {
+        const match = (g.fixTime || '').match(/(\d+)/);
+        return acc + (match ? parseInt(match[1]) : 5);
+      }, 0) + ' minutes minimum'
+    }
+  });
+});
 
 // Scan endpoint
 app.post('/api/scan', async (req, res) => {
@@ -855,6 +1134,16 @@ app.post('/api/scan', async (req, res) => {
   try {
     const html = await fetchHTML(normalizedUrl);
     const result = scanHTML(html, normalizedUrl);
+    // Enrich issues with remediation guides
+    if (result.issues) {
+      result.issues = result.issues.map(issue => {
+        const guide = REMEDIATION_GUIDES[issue.id];
+        if (guide) {
+          return { ...issue, remediation: { priority: guide.priority, legalRisk: guide.legalRisk, fixTime: guide.fixTime, steps: guide.steps, codeExample: guide.codeExample, testHow: guide.testHow, commonMistake: guide.commonMistake } };
+        }
+        return issue;
+      });
+    }
     const scanRecord = { id: uuidv4(), ...result };
     scanHistory.push(scanRecord);
     saveHistory();
@@ -1016,7 +1305,7 @@ app.post('/api/monitor', (req, res) => {
     createdAt: new Date().toISOString(),
     lastScanAt: null,
     lastScore: null,
-    nextScanAt: new Date(Date.now() + (frequency === 'daily' ? 24*60*60*1000 : frequency === 'monthly' ? 30*24*60*60*1000 : 7*24*60*60*1000)).toISOString()
+    nextScanAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
   };
   monitors.push(monitor);
   saveMonitors();
@@ -1053,81 +1342,17 @@ async function runScheduledScans() {
       scanHistory.push(scanRecord);
       saveHistory();
 
-      // Find previous scan for comparison
-      const prevScans = scanHistory.filter(s => s.url === monitor.url && s.id !== scanRecord.id);
-      const prevScan = prevScans.length > 0 ? prevScans[prevScans.length - 1] : null;
-      const previousScore = monitor.lastScore;
-
       monitor.lastScanAt = now.toISOString();
       monitor.lastScore = result.score;
-      const intervalMs = monitor.frequency === 'daily' ? 24*60*60*1000 : monitor.frequency === 'monthly' ? 30*24*60*60*1000 : 7*24*60*60*1000;
+      // Set next scan based on frequency
+      const intervalMs = monitor.frequency === 'daily' ? 24*60*60*1000 : 7*24*60*60*1000;
       monitor.nextScanAt = new Date(now.getTime() + intervalMs).toISOString();
       saveMonitors();
 
       console.log(`[Monitor] ${monitor.url} scored ${result.score}/100 (${result.summary.issues} issues)`);
-
-      // Check alert thresholds and send email
-      const emailPref = emailSettings[monitor.email] || alertPreferences[monitor.email];
-      const alertsEnabled = !emailPref || emailPref.enabled !== false;
-      
-      if (alertsEnabled && monitor.email) {
-        const scoreDrop = shouldNotifyScoreDrop(result.score, previousScore);
-        const newCritical = hasNewCriticalIssues(result, prevScan);
-        
-        // Send scan result email
-        const emailHTML = generateScanEmailHTML(result, prevScan, monitor);
-        let subject = `[ComplianceShield] ${monitor.url} — Score: ${result.score}/100`;
-        if (scoreDrop) subject = `⚠️ [ComplianceShield] Score dropped! ${monitor.url} — ${result.score}/100`;
-        if (newCritical) subject = `🚨 [ComplianceShield] New critical issues! ${monitor.url} — ${result.score}/100`;
-        
-        await sendAlertEmail(monitor.email, subject, emailHTML);
-        
-        if (scoreDrop) console.log(`[Alert] Score drop alert sent for ${monitor.url}: ${previousScore} → ${result.score}`);
-        if (newCritical) console.log(`[Alert] New critical issues alert sent for ${monitor.url}`);
-      }
     } catch(e) {
       console.error(`[Monitor] Failed to scan ${monitor.url}: ${e.message}`);
     }
-  }
-
-  // Weekly digest - runs on Sundays
-  if (now.getDay() === 0) {
-    await sendWeeklyDigests();
-  }
-}
-
-async function sendWeeklyDigests() {
-  // Group monitors by email
-  const byEmail = {};
-  monitors.filter(m => m.active).forEach(m => {
-    if (!byEmail[m.email]) byEmail[m.email] = [];
-    byEmail[m.email].push(m);
-  });
-
-  for (const [email, mons] of Object.entries(byEmail)) {
-    const emailPref = emailSettings[email] || alertPreferences[email];
-    if (emailPref && emailPref.digestEnabled === false) continue;
-
-    const lastDigest = digestTracking[email];
-    if (lastDigest && (Date.now() - new Date(lastDigest).getTime()) < 6 * 24 * 60 * 60 * 1000) continue;
-
-    const monitorData = mons.map(m => {
-      const prevScans = scanHistory.filter(s => s.url === m.url);
-      const lastTwo = prevScans.slice(-2);
-      return {
-        url: m.url,
-        score: m.lastScore || 0,
-        scoreDiff: lastTwo.length >= 2 ? lastTwo[1].score - lastTwo[0].score : null,
-        issues: lastTwo.length > 0 ? lastTwo[lastTwo.length - 1].summary.issues : 0
-      };
-    });
-
-    const html = generateDigestEmailHTML(email, monitorData);
-    await sendAlertEmail(email, `📊 [ComplianceShield] Weekly Accessibility Digest — ${monitorData.length} sites`, html);
-    
-    digestTracking[email] = new Date().toISOString();
-    saveDigestTracking();
-    console.log(`[Digest] Weekly digest sent to ${email} with ${monitorData.length} monitors`);
   }
 }
 
@@ -1367,88 +1592,6 @@ app.get('/api/alerts/status', (req, res) => {
   res.json({ configured: true, ...config });
 });
 
-
-// ==================== EMAIL SETTINGS API ====================
-app.get('/api/email-settings', (req, res) => {
-  const { email } = req.query;
-  if (!email) return res.status(400).json({ error: 'Email parameter required' });
-  const settings = emailSettings[email.toLowerCase().trim()];
-  const smtp = emailSettings._smtp || {};
-  res.json({
-    configured: !!settings,
-    settings: settings || { enabled: true, digestEnabled: true, scoreDropThreshold: 5, notifyOnCritical: true },
-    smtpConfigured: !!(smtp.host && smtp.port)
-  });
-});
-
-app.post('/api/email-settings', (req, res) => {
-  const { email, enabled, digestEnabled, scoreDropThreshold, notifyOnCritical } = req.body;
-  if (!email || !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) return res.status(400).json({ error: 'Valid email required' });
-  
-  const key = email.toLowerCase().trim();
-  emailSettings[key] = {
-    email: key,
-    enabled: enabled !== false,
-    digestEnabled: digestEnabled !== false,
-    scoreDropThreshold: parseInt(scoreDropThreshold) || 5,
-    notifyOnCritical: notifyOnCritical !== false,
-    updatedAt: new Date().toISOString()
-  };
-  saveEmailSettings();
-  res.json({ success: true, settings: emailSettings[key] });
-});
-
-app.post('/api/email-settings/smtp', (req, res) => {
-  const { host, port, secure, user, pass, from } = req.body;
-  emailSettings._smtp = { host, port: parseInt(port) || 587, secure: secure !== false, user, pass, from: from || 'ComplianceShield <alerts@complianceshield.io>' };
-  saveEmailSettings();
-  console.log('[SMTP] Configuration updated:', { host, port, secure, user: user ? '***' : null });
-  res.json({ success: true, message: 'SMTP settings saved', configured: !!(host && port) });
-});
-
-app.post('/api/email-settings/smtp/test', async (req, res) => {
-  const { to } = req.body;
-  if (!to) return res.status(400).json({ error: 'Recipient email required' });
-  const result = await sendAlertEmail(to, '[ComplianceShield] Test Email', '<div style="font-family:sans-serif;padding:32px;text-align:center"><h1>🛡️ ComplianceShield</h1><p>Your email alerts are working correctly!</p><p style="color:#888;font-size:14px">This is a test email from your ComplianceShield monitoring setup.</p></div>');
-  res.json({ success: !result.error, result });
-});
-
-app.post('/api/email-settings/test-scan-email', async (req, res) => {
-  const { email, scanId } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email required' });
-  const scan = scanId ? scanHistory.find(s => s.id === scanId) : scanHistory[scanHistory.length - 1];
-  if (!scan) return res.status(404).json({ error: 'No scan found' });
-  const prevScans = scanHistory.filter(s => s.url === scan.url && s.id !== scan.id);
-  const prevScan = prevScans.length > 0 ? prevScans[prevScans.length - 1] : null;
-  const html = generateScanEmailHTML(scan, prevScan, { email });
-  const result = await sendAlertEmail(email, `[ComplianceShield] Test Report — ${scan.url} — Score: ${scan.score}/100`, html);
-  res.json({ success: !result.error, result, htmlPreview: html.substring(0, 200) + '...' });
-});
-
-// Send digest on demand
-app.post('/api/email-settings/send-digest', async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email required' });
-  const mons = monitors.filter(m => m.active && m.email === email.toLowerCase().trim());
-  if (mons.length === 0) return res.status(404).json({ error: 'No active monitors found for this email' });
-  
-  const monitorData = mons.map(m => {
-    const prevScans = scanHistory.filter(s => s.url === m.url);
-    const lastTwo = prevScans.slice(-2);
-    return {
-      url: m.url,
-      score: m.lastScore || 0,
-      scoreDiff: lastTwo.length >= 2 ? lastTwo[1].score - lastTwo[0].score : null,
-      issues: lastTwo.length > 0 ? lastTwo[lastTwo.length - 1].summary.issues : 0
-    };
-  });
-
-  const html = generateDigestEmailHTML(email, monitorData);
-  const result = await sendAlertEmail(email, `📊 [ComplianceShield] Accessibility Digest — ${monitorData.length} sites`, html);
-  res.json({ success: !result.error, result, monitors: monitorData.length });
-});
-
-
 app.get('/health', (req, res) => res.json({ status: 'ok', uptime: process.uptime(), monitors: monitors.filter(m => m.active).length, totalScans: scanHistory.length }));
 
 const LANDING_PAGE = `<!DOCTYPE html>
@@ -1508,6 +1651,39 @@ a{color:var(--accent2);text-decoration:none}
 .issue-desc{font-size:0.85rem;color:var(--muted)}
 .issue-elements{font-family:monospace;font-size:0.75rem;background:#1a1a2e;padding:8px;border-radius:6px;margin-top:8px;color:var(--orange);overflow-x:auto}
 .issue-link{font-size:0.75rem;color:var(--accent2);margin-top:4px;display:inline-block}
+.issue-badges{display:flex;gap:6px;align-items:center}
+.issue-count{font-weight:400;color:var(--muted)}
+.level-badge{font-size:0.65rem;padding:2px 6px;border-radius:3px;font-weight:800;letter-spacing:0.5px}
+.level-A{background:rgba(231,76,60,0.2);color:#e74c3c}
+.level-AA{background:rgba(230,126,34,0.2);color:#e67e22}
+.level-AAA{background:rgba(46,204,113,0.2);color:#2ecc71}
+.conf-badges{display:flex;gap:8px;justify-content:center;margin:8px 0}
+.conf-badge{padding:6px 14px;border-radius:8px;font-size:0.8rem;font-weight:700}
+.conf-pass{background:rgba(0,184,148,0.15);color:var(--green);border:1px solid rgba(0,184,148,0.3)}
+.conf-fail{background:rgba(231,76,60,0.1);color:var(--red);border:1px solid rgba(231,76,60,0.2)}
+.sev-bar{display:flex;border-radius:8px;overflow:hidden;margin:8px 0;height:24px;font-size:0.7rem}
+.sev-seg{display:flex;align-items:center;justify-content:center;color:white;font-weight:600;min-width:40px}
+.sev-critical{background:#e74c3c}
+.sev-serious{background:#e67e22}
+.sev-moderate{background:#f1c40f;color:#333}
+.sev-minor{background:#95a5a6}
+.how-to-fix{margin-top:8px;font-size:0.82rem}
+.how-to-fix summary{cursor:pointer;color:var(--accent2);font-weight:600;padding:4px 0}
+.how-to-fix summary:hover{color:var(--accent)}
+.how-to-fix ol{padding-left:20px;margin-top:6px;color:var(--muted)}
+.how-to-fix li{margin-bottom:4px}
+.how-to-fix code{background:#1a1a2e;padding:1px 5px;border-radius:3px;font-size:0.8em;color:var(--accent2)}
+.quick-fix{margin-top:8px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.quick-fix-label{padding:8px 12px;cursor:pointer;font-size:0.8rem;font-weight:600;color:var(--accent2);display:flex;justify-content:space-between;align-items:center}
+.quick-fix-label:hover{background:rgba(108,92,231,0.08)}
+.quick-fix-body{display:none;padding:0 12px 12px}
+.quick-fix.open .quick-fix-body{display:block}
+.quick-fix.open .chevron{transform:rotate(180deg)}
+.quick-fix pre{font-size:0.75rem;padding:10px;border-radius:6px;overflow-x:auto;white-space:pre-wrap;word-break:break-word;margin:4px 0}
+.quick-fix-before pre{background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.2);color:#e88}
+.quick-fix-after pre{background:rgba(0,184,148,0.08);border:1px solid rgba(0,184,148,0.2);color:#6fc}
+.qf-label{font-size:0.7rem;font-weight:700;display:block;margin-bottom:2px}
+.issue-elements code{display:block;padding:2px 0;font-size:0.78rem;color:var(--orange)}
 .passes-section{margin-top:20px}
 .pass-item{display:inline-block;background:rgba(0,184,148,0.1);color:var(--green);padding:6px 12px;border-radius:6px;font-size:0.8rem;margin:3px}
 .action-btns{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
@@ -1723,7 +1899,7 @@ footer{text-align:center;padding:40px 0;color:var(--muted);font-size:0.85rem;bor
       <input type="text" class="scanner-input" id="urlInput" placeholder="Enter any website URL (e.g., example.com)" />
       <button class="scanner-btn" id="scanBtn" onclick="runScan()">Scan Now</button>
     </div>
-    <div class="scanner-hint">Free unlimited scans • No signup required • 23 WCAG checks • Results in seconds</div>
+    <div class="scanner-hint">Free unlimited scans • No signup required • 38 WCAG checks • Results in seconds</div>
 
     <div class="loading" id="loading">
       <div class="spinner"></div>
@@ -1737,6 +1913,8 @@ footer{text-align:center;padding:40px 0;color:var(--muted);font-size:0.85rem;bor
         <div class="score-label">Accessibility Score</div>
       </div>
       <div class="compliance-status" id="complianceStatus"></div>
+      <div id="conformanceBadges"></div>
+      <div id="severityBar"></div>
 
       <div class="stats-row">
         <div class="stat"><div class="stat-num" id="statIssues" style="color:var(--red)">0</div><div class="stat-label">Issues</div></div>
@@ -1852,31 +2030,6 @@ footer{text-align:center;padding:40px 0;color:var(--muted);font-size:0.85rem;bor
     </div>
   </div>
 
-
-  <!-- Standalone Scheduled Monitoring -->
-  <div class="scanner" id="monitorStandalone" style="border-color:var(--green);margin-bottom:40px">
-    <h2>🔔 Schedule Automated Monitoring</h2>
-    <p style="text-align:center;color:var(--muted);font-size:0.9rem;margin-bottom:16px">Set up recurring accessibility scans. We will scan your site automatically and track changes over time.</p>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-      <input type="text" id="scheduleUrl" placeholder="Website URL (e.g., example.com)" style="flex:2;min-width:200px;padding:12px 16px;border-radius:10px;border:1px solid var(--border);background:#1a1a2e;color:white;font-size:0.95rem;outline:none" />
-      <input type="email" id="scheduleEmail" placeholder="your@email.com" style="flex:1;min-width:180px;padding:12px 16px;border-radius:10px;border:1px solid var(--border);background:#1a1a2e;color:white;font-size:0.95rem;outline:none" />
-    </div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <select id="scheduleFreq" style="padding:12px 16px;border-radius:10px;border:1px solid var(--border);background:#1a1a2e;color:white;font-size:0.95rem;cursor:pointer">
-        <option value="daily">Daily</option>
-        <option value="weekly" selected>Weekly</option>
-        <option value="monthly">Monthly</option>
-      </select>
-      <button onclick="scheduleMonitor()" style="flex:1;padding:12px 24px;background:var(--green);color:white;border:none;border-radius:10px;font-weight:700;font-size:1rem;cursor:pointer;white-space:nowrap">Start Monitoring</button>
-    </div>
-    <div id="scheduleMsg" style="margin-top:10px;font-size:0.85rem;padding:8px;border-radius:6px;display:none"></div>
-    <div id="activeMonitors" style="margin-top:16px;display:none">
-      <h3 style="font-size:0.95rem;color:white;margin-bottom:8px">Active Monitors</h3>
-      <div id="monitorsList"></div>
-    </div>
-    <p style="text-align:center;margin-top:10px;font-size:0.75rem;color:var(--muted)">Free tier: 1 monitor | Pro: unlimited monitors with email reports</p>
-  </div>
-
   <!-- Competitor Comparison -->
   <div class="compare-section" id="compareSection">
     <h2>⚔️ Compare With Competitor</h2>
@@ -1976,7 +2129,7 @@ footer{text-align:center;padding:40px 0;color:var(--muted);font-size:0.85rem;bor
       <div class="price-card">
         <h3>Free</h3><div class="subtitle">For quick checks</div>
         <div class="price">$0</div>
-        <ul><li>Unlimited scans</li><li>23 WCAG checks</li><li>PDF export</li><li>Score trends</li><li>Compliance badge</li></ul>
+        <ul><li>Unlimited scans</li><li>38 WCAG checks</li><li>PDF export</li><li>Score trends</li><li>Compliance badge</li></ul>
         <button class="price-btn" onclick="document.getElementById('urlInput').focus()">Start Scanning</button>
       </div>
       <div class="price-card featured">
@@ -1996,12 +2149,13 @@ footer{text-align:center;padding:40px 0;color:var(--muted);font-size:0.85rem;bor
 
   <footer>
     <p>🛡️ ComplianceShield — Protect your business from ADA lawsuits</p>
-    <p style="margin-top:8px">23 WCAG checks • Color contrast analysis • Keyboard navigation • Link quality • Score trends</p>
+    <p style="margin-top:8px">38 WCAG checks • Color contrast analysis • Keyboard navigation • Link quality • Score trends</p>
     <p style="margin-top:8px">Built with care • <a href="https://github.com/beepboop-dev/gamma-project">GitHub</a></p>
   </footer>
 </div>
 
 <script>
+const WCAG_RULES_CLIENT = ${JSON.stringify(Object.keys(WCAG_RULES))};
 let currentScan = null;
 
 // ===== localStorage scan history =====
@@ -2048,11 +2202,13 @@ renderRecentScans();
 
 // ===== Issue Categories =====
 const ISSUE_CATEGORIES = {
-  'Images': { icon: '🖼️', rules: ['missing-alt', 'empty-alt'] },
-  'Forms': { icon: '📝', rules: ['missing-form-label'] },
-  'Navigation': { icon: '🧭', rules: ['empty-link', 'empty-button', 'no-skip-link', 'missing-landmark', 'tabindex-positive', 'generic-link-text'] },
-  'Content': { icon: '📄', rules: ['missing-lang', 'missing-title', 'missing-heading', 'skipped-heading', 'missing-table-header', 'meta-refresh', 'autoplay-media', 'low-contrast-text', 'inline-styles-text', 'color-contrast-inline'] },
-  'Keyboard': { icon: '⌨️', rules: ['keyboard-trap', 'missing-focus-style', 'missing-keyboard-access'] }
+  'Images & Media': { icon: '🖼️', rules: ['missing-alt', 'empty-alt', 'image-map-no-alt', 'autoplay-media'] },
+  'Forms & Inputs': { icon: '📝', rules: ['missing-form-label', 'autocomplete-missing'] },
+  'Navigation & Links': { icon: '🧭', rules: ['empty-link', 'empty-button', 'no-skip-link', 'missing-landmark', 'tabindex-positive', 'generic-link-text', 'link-new-window'] },
+  'Structure & Semantics': { icon: '📄', rules: ['missing-lang', 'missing-title', 'missing-heading', 'skipped-heading', 'missing-table-header', 'missing-table-caption', 'meta-refresh', 'iframe-no-title', 'marquee-blink'] },
+  'Visual & Contrast': { icon: '🎨', rules: ['low-contrast-text', 'inline-styles-text', 'color-contrast-inline', 'missing-viewport', 'viewport-scalable-no', 'text-justified'] },
+  'Keyboard & Focus': { icon: '⌨️', rules: ['keyboard-trap', 'missing-focus-style', 'missing-keyboard-access'] },
+  'ARIA & Semantics': { icon: '🏷️', rules: ['duplicate-id', 'invalid-aria-role', 'aria-hidden-focus', 'missing-aria-label', 'title-redundant', 'accesskey-duplicate'] }
 };
 
 function categorizeIssues(issues) {
@@ -2073,18 +2229,33 @@ function renderCategorizedIssues(issues) {
   const cats = categorizeIssues(issues);
   return Object.entries(cats).filter(([,c]) => c.issues.length > 0).map(([name, cat]) => {
     const totalCount = cat.issues.reduce((s,i) => s + i.count, 0);
-    const issuesHtml = cat.issues.map(issue => \`
+    const issuesHtml = cat.issues.sort((a,b) => ({critical:0,serious:1,moderate:2,minor:3}[a.impact]||4) - ({critical:0,serious:1,moderate:2,minor:3}[b.impact]||4)).map(issue => {
+      const fix = QUICK_FIX_SNIPPETS[issue.id];
+      const fixHtml = fix ? \`<div class="quick-fix">
+        <div class="quick-fix-label" onclick="this.parentElement.classList.toggle('open')">💡 Quick Fix Code <span class="chevron">▼</span></div>
+        <div class="quick-fix-body">
+          <div class="quick-fix-before"><span class="qf-label">❌ Before:</span><pre>\${escapeHtml(fix.before.replace(/\\\\n/g,'\\n'))}</pre></div>
+          <div class="quick-fix-after"><span class="qf-label">✅ After:</span><pre>\${escapeHtml(fix.after.replace(/\\\\n/g,'\\n'))}</pre></div>
+        </div>
+      </div>\` : '';
+      const howToFix = (FIX_INSTRUCTIONS[issue.id] || []).map(s => '<li>' + s + '</li>').join('');
+      return \`
       <div class="issue-item \${issue.impact}">
         <div class="issue-header">
-          <span class="issue-name">\${issue.name} (\${issue.count})</span>
-          <span class="issue-impact impact-\${issue.impact}">\${issue.impact}</span>
+          <span class="issue-name">\${issue.name} <span class="issue-count">(\${issue.count})</span></span>
+          <div class="issue-badges">
+            <span class="level-badge level-\${issue.level}">\${issue.level}</span>
+            <span class="issue-impact impact-\${issue.impact}">\${issue.impact}</span>
+          </div>
         </div>
-        <div class="issue-wcag">📋 \${issue.wcag} — Level \${issue.level} (\${issue.principle})</div>
+        <div class="issue-wcag">📋 \${issue.wcag} — \${issue.principle}</div>
         <div class="issue-desc">\${issue.description}</div>
-        \${issue.elements && issue.elements.length > 0 ? \`<div class="issue-elements">\${issue.elements.map(e => escapeHtml(e)).join('<br>')}</div>\` : ''}
+        \${issue.elements && issue.elements.length > 0 ? \`<div class="issue-elements"><strong>Found in:</strong><br>\${issue.elements.map(e => '<code>' + escapeHtml(e) + '</code>').join('<br>')}\${issue.count > issue.elements.length ? '<br><span style="color:var(--muted)">...and ' + (issue.count - issue.elements.length) + ' more</span>' : ''}</div>\` : ''}
+        \${howToFix ? \`<details class="how-to-fix"><summary>🔧 How to Fix</summary><ol>\${howToFix}</ol></details>\` : ''}
+        \${fixHtml}
         <a href="\${issue.url}" target="_blank" class="issue-link">📖 WCAG Reference →</a>
       </div>
-    \`).join('');
+    \`;}).join('');
     return \`<div class="category-group">
       <div class="category-header" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
         <h4>\${cat.icon} \${name} <span class="cat-count">\${cat.issues.length} issue\${cat.issues.length>1?'s':''} · \${totalCount} occurrence\${totalCount>1?'s':''}</span></h4>
@@ -2143,9 +2314,40 @@ function displayResults(data) {
   document.getElementById('statWarnings').textContent = data.summary.warnings;
   document.getElementById('badgeBtn').style.display = data.complianceLevel !== 'non-compliant' ? 'inline-block' : 'none';
 
+  // Conformance level badges
+  const confEl = document.getElementById('conformanceBadges');
+  if (confEl && data.conformance) {
+    const c = data.conformance;
+    confEl.innerHTML = \`
+      <div class="conf-badges">
+        <span class="conf-badge \${c.levelA ? 'conf-pass' : 'conf-fail'}">Level A \${c.levelA ? '✓' : '✗ (' + c.levelAIssues + ')'}</span>
+        <span class="conf-badge \${c.levelAA ? 'conf-pass' : 'conf-fail'}">Level AA \${c.levelAA ? '✓' : '✗ (' + c.levelAAIssues + ')'}</span>
+        <span class="conf-badge \${c.levelAAA ? 'conf-pass' : 'conf-fail'}">Level AAA \${c.levelAAA ? '✓' : '✗ (' + c.levelAAAIssues + ')'}</span>
+      </div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:4px">\${data.summary.totalChecks} checks · Weighted scoring · \${WCAG_RULES_CLIENT.length} WCAG criteria</div>
+    \`;
+  }
+
+  // Severity summary bar
+  const sevEl = document.getElementById('severityBar');
+  if (sevEl) {
+    const s = data.summary;
+    const total = s.critical + s.serious + s.moderate + s.minor;
+    if (total > 0) {
+      sevEl.innerHTML = \`<div class="sev-bar">
+        \${s.critical ? \`<div class="sev-seg sev-critical" style="flex:\${s.critical}">\${s.critical} critical</div>\` : ''}
+        \${s.serious ? \`<div class="sev-seg sev-serious" style="flex:\${s.serious}">\${s.serious} serious</div>\` : ''}
+        \${s.moderate ? \`<div class="sev-seg sev-moderate" style="flex:\${s.moderate}">\${s.moderate} moderate</div>\` : ''}
+        \${s.minor ? \`<div class="sev-seg sev-minor" style="flex:\${s.minor}">\${s.minor} minor</div>\` : ''}
+      </div>\`;
+    } else {
+      sevEl.innerHTML = '';
+    }
+  }
+
   // Categorized issues
   document.getElementById('issuesList').innerHTML = data.issues.length > 0
-    ? '<h3 style="color:var(--red);margin:20px 0 12px">🔍 Issues by Category</h3>' + renderCategorizedIssues(data.issues)
+    ? '<h3 style="color:var(--red);margin:20px 0 12px">🔍 Issues Found (' + data.summary.issues + ' rules, grouped by category)</h3>' + renderCategorizedIssues(data.issues)
     : '';
 
   // Save to localStorage
@@ -2473,7 +2675,111 @@ const FIX_INSTRUCTIONS = {
     'Add to <code>&lt;head&gt;</code>: <code>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;</code>',
     'This enables responsive design for mobile users',
     'Don\'t set <code>maximum-scale=1</code> — it prevents zooming'
+  ],
+  'duplicate-id': [
+    'Search for duplicate <code>id</code> values in your HTML',
+    'Make each ID unique — e.g. <code>id="nav-link-1"</code>, <code>id="nav-link-2"</code>',
+    'Label <code>for</code> attributes and ARIA references depend on unique IDs'
+  ],
+  'invalid-aria-role': [
+    'Check the <code>role</code> attribute against the <a href="https://www.w3.org/TR/wai-aria-1.1/#role_definitions" target="_blank">WAI-ARIA spec</a>',
+    'Remove or correct misspelled roles',
+    'Use semantic HTML elements instead of ARIA roles where possible'
+  ],
+  'aria-hidden-focus': [
+    'Remove focusable elements from inside <code>aria-hidden="true"</code> containers',
+    'Or add <code>tabindex="-1"</code> to focusable children to remove them from tab order',
+    'Or remove <code>aria-hidden="true"</code> from the container'
+  ],
+  'missing-aria-label': [
+    'Add <code>aria-label="Description"</code> to the widget element',
+    'Or reference a visible heading: <code>aria-labelledby="heading-id"</code>',
+    'Every interactive ARIA widget needs an accessible name'
+  ],
+  'viewport-scalable-no': [
+    'Remove <code>user-scalable=no</code> from your viewport meta tag',
+    'Set <code>maximum-scale</code> to at least 2.0 (or remove it)',
+    'Correct: <code>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;</code>'
+  ],
+  'image-map-no-alt': [
+    'Add <code>alt</code> text to every <code>&lt;area&gt;</code> element',
+    'Describe the destination or action for each hotspot',
+    'Example: <code>&lt;area alt="Contact page" href="/contact"&gt;</code>'
+  ],
+  'link-new-window': [
+    'Add visual and textual indication: <code>(opens in new tab)</code>',
+    'Or use <code>aria-label</code>: <code>aria-label="Report (opens in new tab)"</code>',
+    'Consider if target="_blank" is truly necessary'
+  ],
+  'missing-table-caption': [
+    'Add <code>&lt;caption&gt;</code> as the first child of <code>&lt;table&gt;</code>',
+    'Describe what data the table contains',
+    'Or use <code>aria-label</code> on the table element'
+  ],
+  'iframe-no-title': [
+    'Add a <code>title</code> attribute: <code>&lt;iframe title="Video player" src="..."&gt;</code>',
+    'Describe what the iframe contains',
+    'For decorative iframes, use <code>aria-hidden="true"</code>'
+  ],
+  'accesskey-duplicate': [
+    'Find all elements with <code>accesskey</code> attributes',
+    'Ensure each value is unique across the page',
+    'Consider removing accesskeys — they often conflict with browser/AT shortcuts'
+  ],
+  'marquee-blink': [
+    'Replace <code>&lt;marquee&gt;</code> with CSS animations that can be paused',
+    'Remove <code>&lt;blink&gt;</code> elements entirely',
+    'Use <code>prefers-reduced-motion</code> media query to respect user preferences'
+  ],
+  'autocomplete-missing': [
+    'Add <code>autocomplete</code> to personal data fields',
+    'Example: <code>&lt;input type="email" autocomplete="email"&gt;</code>',
+    'See the <a href="https://html.spec.whatwg.org/multipage/form-control-infrastructure.html#autofill" target="_blank">full list of values</a>'
+  ],
+  'text-justified': [
+    'Change <code>text-align: justify</code> to <code>text-align: left</code>',
+    'Justified text creates uneven word spacing',
+    'This is especially problematic for users with dyslexia'
+  ],
+  'title-redundant': [
+    'Remove the <code>title</code> attribute when it duplicates the element text',
+    'Use <code>title</code> only to provide additional (not redundant) information',
+    'Screen readers may announce the text twice'
   ]
+};
+
+const QUICK_FIX_SNIPPETS = {
+  'missing-alt': { before: '<img src="photo.jpg">', after: '<img src="photo.jpg" alt="Team photo at company retreat">' },
+  'empty-alt': { before: '<img src="hero.jpg" alt="">', after: '<img src="hero.jpg" alt="Mountain landscape at sunrise">' },
+  'missing-lang': { before: '<html>', after: '<html lang="en">' },
+  'missing-title': { before: '<head>\\n  <!-- no title -->\\n</head>', after: '<head>\\n  <title>About Us - Company Name</title>\\n</head>' },
+  'missing-form-label': { before: '<input type="email" name="email">', after: '<label for="email">Email address</label>\\n<input type="email" name="email" id="email">' },
+  'empty-link': { before: '<a href="/cart"><i class="icon-cart"></i></a>', after: '<a href="/cart" aria-label="Shopping cart">\\n  <i class="icon-cart" aria-hidden="true"></i>\\n</a>' },
+  'empty-button': { before: '<button><svg>...</svg></button>', after: '<button aria-label="Close menu">\\n  <svg aria-hidden="true">...</svg>\\n</button>' },
+  'skipped-heading': { before: '<h1>Page Title</h1>\\n<h3>Subsection</h3>', after: '<h1>Page Title</h1>\\n<h2>Section</h2>\\n<h3>Subsection</h3>' },
+  'missing-landmark': { before: '<div id="main">\\n  Content\\n</div>', after: '<main>\\n  Content\\n</main>' },
+  'color-contrast-inline': { before: '<p style="color: #999; background: #fff">', after: '<p style="color: #595959; background: #fff">\\n<!-- Ratio: 7:1 ✓ -->' },
+  'missing-focus-style': { before: '*:focus { outline: none; }', after: '*:focus-visible {\\n  outline: 2px solid #6c5ce7;\\n  outline-offset: 2px;\\n}' },
+  'generic-link-text': { before: '<a href="/report">Click here</a>', after: '<a href="/report">Download the 2024 annual report</a>' },
+  'missing-keyboard-access': { before: '<div onclick="openMenu()">Menu</div>', after: '<button onclick="openMenu()">Menu</button>\\n<!-- Or: -->\\n<div role="button" tabindex="0"\\n  onclick="openMenu()"\\n  onkeydown="if(event.key===\'Enter\')openMenu()">\\n  Menu\\n</div>' },
+  'keyboard-trap': { before: 'onkeydown="event.preventDefault()"', after: 'onkeydown="if(event.key!==\'Tab\'&&event.key!==\'Escape\') event.preventDefault()"' },
+  'duplicate-id': { before: '<div id="card">A</div>\\n<div id="card">B</div>', after: '<div id="card-1">A</div>\\n<div id="card-2">B</div>' },
+  'invalid-aria-role': { before: '<div role="popup">...</div>', after: '<div role="dialog" aria-label="Settings">...</div>' },
+  'aria-hidden-focus': { before: '<div aria-hidden="true">\\n  <a href="/link">Link</a>\\n</div>', after: '<div aria-hidden="true">\\n  <a href="/link" tabindex="-1">Link</a>\\n</div>' },
+  'missing-aria-label': { before: '<div role="dialog">\\n  <h2>Settings</h2>\\n</div>', after: '<div role="dialog" aria-labelledby="dlg-title">\\n  <h2 id="dlg-title">Settings</h2>\\n</div>' },
+  'viewport-scalable-no': { before: '<meta name="viewport" content="width=device-width, user-scalable=no">', after: '<meta name="viewport" content="width=device-width, initial-scale=1.0">' },
+  'link-new-window': { before: '<a href="/doc.pdf" target="_blank">Report</a>', after: '<a href="/doc.pdf" target="_blank">\\n  Report (opens in new tab)\\n</a>' },
+  'missing-table-caption': { before: '<table>\\n  <tr><th>Name</th>...</tr>\\n</table>', after: '<table>\\n  <caption>Employee directory</caption>\\n  <tr><th>Name</th>...</tr>\\n</table>' },
+  'iframe-no-title': { before: '<iframe src="https://youtube.com/embed/abc"></iframe>', after: '<iframe src="https://youtube.com/embed/abc" title="Product demo video"></iframe>' },
+  'marquee-blink': { before: '<marquee>Breaking news!</marquee>', after: '<div role="alert" aria-live="polite">Breaking news!</div>' },
+  'autocomplete-missing': { before: '<input type="email" name="email">', after: '<input type="email" name="email" autocomplete="email">' },
+  'text-justified': { before: 'p { text-align: justify; }', after: 'p { text-align: left; }' },
+  'title-redundant': { before: '<a href="/home" title="Home">Home</a>', after: '<a href="/home">Home</a>' },
+  'missing-table-header': { before: '<table>\\n  <tr><td>Name</td><td>Age</td></tr>\\n</table>', after: '<table>\\n  <tr><th scope="col">Name</th><th scope="col">Age</th></tr>\\n</table>' },
+  'missing-viewport': { before: '<head>\\n  <!-- no viewport -->\\n</head>', after: '<head>\\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\\n</head>' },
+  'image-map-no-alt': { before: '<area href="/about" shape="rect" coords="0,0,50,50">', after: '<area href="/about" shape="rect" coords="0,0,50,50" alt="About us page">' },
+  'accesskey-duplicate': { before: '<a accesskey="s" href="/save">Save</a>\\n<a accesskey="s" href="/search">Search</a>', after: '<a accesskey="s" href="/save">Save</a>\\n<a accesskey="f" href="/search">Search</a>' },
+  'no-skip-link': { before: '<body>\\n  <nav>...</nav>\\n  <main>Content</main>\\n</body>', after: '<body>\\n  <a href="#main" class="skip-link">Skip to main content</a>\\n  <nav>...</nav>\\n  <main id="main">Content</main>\\n</body>' }
 };
 
 const IMPACT_WEIGHT = { critical: 4, serious: 3, moderate: 2, minor: 1 };
@@ -2492,18 +2798,29 @@ function renderFixPriority(issues) {
   const pointsPerIssue = totalIssues > 0 ? Math.round(100 / (totalIssues + issues.reduce((s,i)=>s+i.count,0)/issues.length)) : 5;
   
   list.innerHTML = top3.map((issue, i) => {
-    const steps = FIX_INSTRUCTIONS[issue.id] || [
+    const rem = issue.remediation || {};
+    const steps = rem.steps || FIX_INSTRUCTIONS[issue.id] || [
       'Review the WCAG guideline: ' + issue.wcag,
       'Check each flagged element and apply the fix',
       'Re-test to confirm the issue is resolved'
     ];
     const pts = Math.max(2, Math.round(pointsPerIssue * (IMPACT_WEIGHT[issue.impact]||1) * 0.8));
+    const codeHtml = rem.codeExample ? \`<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--accent);font-size:0.85rem">📝 Show code fix example</summary><pre style="background:#0d0d1a;padding:12px;border-radius:6px;margin-top:6px;font-size:0.8rem;overflow-x:auto;white-space:pre-wrap;color:#c0c0c0">\${escapeHtml(rem.codeExample)}</pre></details>\` : '';
+    const metaHtml = rem.legalRisk ? \`<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:0.8rem">
+      <span style="color:var(--red)">⚖️ Legal Risk: \${rem.legalRisk.split('—')[0].trim()}</span>
+      <span style="color:var(--muted)">⏱️ \${rem.fixTime || '5-15 min'}</span>
+      \${rem.commonMistake ? \`<span style="color:var(--orange)">⚠️ Common mistake: \${rem.commonMistake.substring(0, 80)}</span>\` : ''}
+    </div>\` : '';
+    const testHtml = rem.testHow ? \`<div style="margin-top:6px;font-size:0.8rem;color:var(--muted)">🧪 How to verify: \${rem.testHow}</div>\` : '';
     return \`<div class="fix-item \${issue.impact}">
       <div class="fix-item-header">
         <span class="fix-item-name">\${i+1}. \${issue.name} <span style="font-weight:400;color:var(--muted)">(\${issue.count} found)</span></span>
         <span class="fix-item-impact impact-\${issue.impact}">\${issue.impact}</span>
       </div>
+      \${metaHtml}
       <ol class="fix-steps">\${steps.map(s => '<li>' + s + '</li>').join('')}</ol>
+      \${codeHtml}
+      \${testHtml}
       <div class="fix-item-points">🎯 Est. +\${pts} points when fixed</div>
     </div>\`;
   }).join('');
@@ -2618,67 +2935,6 @@ async function loadScanHistory() {
   } catch(e) { console.error('History load error:', e); }
 }
 
-
-// ===== Standalone Monitoring =====
-async function scheduleMonitor() {
-  const url = document.getElementById('scheduleUrl').value.trim();
-  const email = document.getElementById('scheduleEmail').value.trim();
-  const frequency = document.getElementById('scheduleFreq').value;
-  
-  if (!url) { showScheduleMsg('Please enter a website URL', 'error'); return; }
-  if (!email) { showScheduleMsg('Please enter your email address', 'error'); return; }
-  
-  try {
-    const res = await fetch('/api/monitor', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, email, frequency })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    
-    const freqLabel = { daily: 'daily', weekly: 'weekly', monthly: 'monthly' }[frequency] || frequency;
-    showScheduleMsg('Monitor active! ' + url + ' will be scanned ' + freqLabel + '. Results sent to ' + email, 'success');
-    
-    fetch('/api/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
-    loadActiveMonitors();
-  } catch(e) {
-    showScheduleMsg(e.message, 'error');
-  }
-}
-
-function showScheduleMsg(text, type) {
-  const msg = document.getElementById('scheduleMsg');
-  msg.textContent = text;
-  msg.style.display = 'block';
-  msg.style.background = type === 'error' ? 'rgba(231,76,60,0.1)' : 'rgba(0,184,148,0.1)';
-  msg.style.color = type === 'error' ? 'var(--red)' : 'var(--green)';
-  msg.style.border = '1px solid ' + (type === 'error' ? 'var(--red)' : 'var(--green)');
-}
-
-async function loadActiveMonitors() {
-  try {
-    const res = await fetch('/api/monitors');
-    const data = await res.json();
-    const container = document.getElementById('activeMonitors');
-    const list = document.getElementById('monitorsList');
-    if (!container || data.length === 0) { if(container) container.style.display = 'none'; return; }
-    container.style.display = 'block';
-    list.innerHTML = data.slice(0, 10).map(function(m) {
-      var scoreColor = m.lastScore === null ? 'var(--muted)' : m.lastScore >= 80 ? 'var(--green)' : m.lastScore >= 50 ? 'var(--orange)' : 'var(--red)';
-      var scoreText = m.lastScore !== null ? m.lastScore + '/100' : 'pending';
-      var nextDate = m.nextScanAt ? new Date(m.nextScanAt).toLocaleDateString() : 'soon';
-      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:4px;font-size:0.85rem">' +
-        '<span style="color:white;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:250px">' + escapeHtml(m.url) + '</span>' +
-        '<span style="display:flex;gap:12px;align-items:center">' +
-          '<span style="color:' + scoreColor + ';font-weight:700">' + scoreText + '</span>' +
-          '<span style="color:var(--muted);font-size:0.75rem">' + m.frequency + '</span>' +
-          '<span style="color:var(--muted);font-size:0.7rem">next: ' + nextDate + '</span>' +
-        '</span></div>';
-    }).join('');
-  } catch(e) { console.error(e); }
-}
-loadActiveMonitors();
-
 document.getElementById('urlInput').addEventListener('keypress', e => { if (e.key === 'Enter') runScan(); });
 const params = new URLSearchParams(window.location.search);
 if (params.get('checkout') === 'success') alert('🎉 Subscription activated! Thank you.');
@@ -2777,13 +3033,13 @@ app.get('/ada-compliance-checker', (req, res) => {
 <h2>How Our Free ADA Compliance Checker Works</h2>
 <ol>
 <li><strong>Enter your website URL</strong> — Just paste your homepage URL into our scanner</li>
-<li><strong>Get instant results</strong> — Our engine runs 23 WCAG 2.1 checks in seconds</li>
+<li><strong>Get instant results</strong> — Our engine runs 38 WCAG 2.1 checks in seconds</li>
 <li><strong>See exactly what to fix</strong> — Every issue comes with plain-English fix instructions and code examples</li>
 <li><strong>Download your PDF report</strong> — Share with your developer or keep for compliance records</li>
 </ol>
 
 <h2>What We Check</h2>
-<p>ComplianceShield checks your website against 23 critical WCAG 2.1 success criteria:</p>
+<p>ComplianceShield checks your website against 38 critical WCAG 2.1 success criteria:</p>
 <ul>
 <li>Image alt text (SC 1.1.1) — The #1 most common violation</li>
 <li>Form labels and inputs (SC 1.3.1, 4.1.2)</li>
@@ -2792,7 +3048,7 @@ app.get('/ada-compliance-checker', (req, res) => {
 <li>Keyboard navigation and focus management (SC 2.1.1, 2.4.7)</li>
 <li>Link text quality (SC 2.4.4)</li>
 <li>Page language, title, and landmarks (SC 3.1.1, 2.4.2)</li>
-<li>And 16 more critical checks...</li>
+<li>And 31 more critical checks...</li>
 </ul>
 
 <div class="warning">
@@ -2892,7 +3148,7 @@ app.get('/ada-website-compliance', (req, res) => {
 app.get('/wcag-compliance-checker', (req, res) => {
   res.send(seoPage(
     'Free WCAG 2.1 Compliance Checker — Test Your Website | ComplianceShield',
-    'Free WCAG 2.1 compliance checker with 23 automated checks. Test against Level A and AA criteria. Get fix instructions for every issue.',
+    'Free WCAG 2.1 compliance checker with 38 automated checks. Test against Level A and AA criteria. Get fix instructions for every issue.',
     'WCAG 2.1 Compliance Checker',
     `<p>Test your website against <strong>WCAG 2.1 Level A and AA</strong> success criteria with our free automated checker. Get detailed results with fix instructions for every issue found.</p>
 
@@ -2920,7 +3176,7 @@ app.get('/wcag-compliance-checker', (req, res) => {
 <p>Content must be robust enough to be interpreted by a wide variety of user agents, including assistive technologies like screen readers.</p>
 
 <h2>What Our WCAG Checker Tests</h2>
-<p>Our free scanner runs 23 automated checks covering the most critical and most commonly violated WCAG success criteria:</p>
+<p>Our free scanner runs 38 automated checks covering the most critical and most commonly violated WCAG success criteria:</p>
 <ul>
 <li>SC 1.1.1 — Non-text content (alt text)</li>
 <li>SC 1.3.1 — Info and relationships (headings, labels, landmarks)</li>
@@ -2932,7 +3188,7 @@ app.get('/wcag-compliance-checker', (req, res) => {
 <li>SC 2.4.7 — Focus visible</li>
 <li>SC 3.1.1 — Language of page</li>
 <li>SC 4.1.2 — Name, role, value</li>
-<li>And 13 more...</li>
+<li>And 28 more...</li>
 </ul>`
   ));
 });

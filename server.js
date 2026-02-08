@@ -871,7 +871,254 @@ function scanHTML(html, url) {
   };
 }
 
+// ==================== REMEDIATION GUIDE GENERATOR ====================
+const REMEDIATION_GUIDES = {
+  'missing-alt': {
+    priority: 'CRITICAL — Fix immediately',
+    legalRisk: 'HIGH — #1 cited violation in ADA lawsuits (83% of cases)',
+    fixTime: '2-5 minutes per image',
+    steps: [
+      'Identify each image without alt text',
+      'Determine if the image is decorative or informational',
+      'For informational images: add alt="description of what the image shows"',
+      'For decorative images: add alt="" and role="presentation"',
+      'For complex images (charts, infographics): add alt with summary + link to long description'
+    ],
+    codeExample: `<!-- BEFORE (violation) -->\n<img src="team-photo.jpg">\n\n<!-- AFTER (fixed) -->\n<img src="team-photo.jpg" alt="Our team of 12 engineers at the 2024 company retreat">`,
+    testHow: 'Use a screen reader (VoiceOver on Mac: Cmd+F5, NVDA on Windows) to verify images are announced correctly.',
+    commonMistake: 'Don\'t use alt="image" or alt="photo" — describe what the image actually shows.'
+  },
+  'missing-form-label': {
+    priority: 'CRITICAL — Fix immediately',
+    legalRisk: 'HIGH — Unlabeled forms make sites unusable for screen readers',
+    fixTime: '1-3 minutes per input',
+    steps: [
+      'Find each <input>, <select>, or <textarea> without an associated <label>',
+      'Add a <label> element with a for="id" matching the input\'s id',
+      'Alternatively, wrap the input inside the <label> element',
+      'For inputs where a visible label isn\'t appropriate, use aria-label'
+    ],
+    codeExample: `<!-- BEFORE (violation) -->\n<input type="email" placeholder="Enter email">\n\n<!-- AFTER (fixed — option 1: explicit label) -->\n<label for="email-input">Email address</label>\n<input type="email" id="email-input" placeholder="Enter email">\n\n<!-- AFTER (fixed — option 2: wrapping label) -->\n<label>Email address <input type="email" placeholder="Enter email"></label>\n\n<!-- AFTER (fixed — option 3: aria-label for icon buttons) -->\n<input type="search" aria-label="Search products">`,
+    testHow: 'Click the label text — if the cursor moves to the input, the label is properly associated.',
+    commonMistake: 'placeholder is NOT a substitute for a label. Screen readers may not announce placeholders.'
+  },
+  'empty-link': {
+    priority: 'HIGH — Fix this week',
+    legalRisk: 'HIGH — Screen reader users cannot determine link purpose',
+    fixTime: '1-2 minutes per link',
+    steps: [
+      'Find links with no text content (often icon-only links)',
+      'Add descriptive text inside the link, or use aria-label',
+      'For icon links, add visually-hidden text via CSS'
+    ],
+    codeExample: `<!-- BEFORE (violation) -->\n<a href="/cart"><i class="icon-cart"></i></a>\n\n<!-- AFTER (fixed) -->\n<a href="/cart" aria-label="Shopping cart (3 items)"><i class="icon-cart"></i></a>\n\n<!-- Or with visually hidden text -->\n<a href="/cart"><i class="icon-cart"></i><span class="sr-only">Shopping cart</span></a>`,
+    testHow: 'Tab to the link with keyboard — a screen reader should announce its purpose.',
+    commonMistake: 'Don\'t use aria-label="link" or aria-label="click" — describe the destination.'
+  },
+  'empty-button': {
+    priority: 'CRITICAL — Fix immediately',
+    legalRisk: 'HIGH — Users cannot interact with unlabeled buttons',
+    fixTime: '1-2 minutes per button',
+    steps: [
+      'Find buttons with no text content',
+      'Add descriptive text inside the button, or use aria-label',
+      'For icon buttons, add visually-hidden text'
+    ],
+    codeExample: `<!-- BEFORE (violation) -->\n<button><svg class="close-icon">...</svg></button>\n\n<!-- AFTER (fixed) -->\n<button aria-label="Close dialog"><svg class="close-icon">...</svg></button>`,
+    testHow: 'Use a screen reader to verify the button\'s purpose is announced.',
+    commonMistake: 'Don\'t label buttons with just "button" or "submit" — describe the action.'
+  },
+  'missing-lang': {
+    priority: 'HIGH — Quick 30-second fix',
+    legalRisk: 'MEDIUM — Screen readers may mispronounce all content',
+    fixTime: '30 seconds',
+    steps: [
+      'Add a lang attribute to your <html> element',
+      'Use the correct BCP 47 language code (en, es, fr, de, etc.)'
+    ],
+    codeExample: `<!-- BEFORE (violation) -->\n<html>\n\n<!-- AFTER (fixed) -->\n<html lang="en">`,
+    testHow: 'View page source and confirm <html lang="..."> is present.',
+    commonMistake: 'If your page has content in multiple languages, use lang on specific elements too.'
+  },
+  'missing-title': {
+    priority: 'HIGH — Quick 1-minute fix',
+    legalRisk: 'MEDIUM — Users can\'t identify the page in tabs or history',
+    fixTime: '1 minute',
+    steps: ['Add a descriptive <title> in your <head> section', 'Make it unique per page', 'Include the site name after a separator'],
+    codeExample: `<!-- BEFORE (violation) -->\n<head><meta charset="UTF-8"></head>\n\n<!-- AFTER (fixed) -->\n<head>\n  <meta charset="UTF-8">\n  <title>Contact Us | YourCompany</title>\n</head>`,
+    testHow: 'Check the browser tab — it should show a meaningful title.',
+    commonMistake: 'Don\'t use the same title on every page. Each page should have a unique, descriptive title.'
+  },
+  'low-contrast-text': {
+    priority: 'HIGH — Fix this week',
+    legalRisk: 'HIGH — Second most cited violation in ADA lawsuits',
+    fixTime: '5-15 minutes',
+    steps: [
+      'Use a contrast checker tool (WebAIM Contrast Checker)',
+      'Normal text needs 4.5:1 ratio minimum',
+      'Large text (18px+ bold or 24px+ regular) needs 3:1 ratio',
+      'Adjust text color or background color to meet requirements'
+    ],
+    codeExample: `/* BEFORE (violation — ratio 2.5:1) */\ncolor: #999; background: #fff;\n\n/* AFTER (fixed — ratio 7:1) */\ncolor: #595959; background: #fff;`,
+    testHow: 'Use browser DevTools → Accessibility panel or WebAIM\'s contrast checker.',
+    commonMistake: 'Light gray on white is the #1 offender. When in doubt, go darker.'
+  },
+  'missing-heading': {
+    priority: 'MEDIUM — Fix in next sprint',
+    legalRisk: 'MEDIUM — Affects navigability for screen reader users',
+    fixTime: '10-30 minutes',
+    steps: ['Add an H1 for the page\'s main topic', 'Structure content with H2-H6 in hierarchical order', 'Don\'t skip levels (H1 → H3 without H2)'],
+    codeExample: `<h1>Product Catalog</h1>\n  <h2>Electronics</h2>\n    <h3>Smartphones</h3>\n    <h3>Laptops</h3>\n  <h2>Clothing</h2>`,
+    testHow: 'Install the HeadingsMap browser extension to visualize your heading structure.',
+    commonMistake: 'Don\'t use headings just for visual styling. Use CSS for that. Headings are for structure.'
+  },
+  'no-skip-link': {
+    priority: 'MEDIUM — Fix in next sprint',
+    legalRisk: 'MEDIUM — Keyboard users must tab through nav on every page',
+    fixTime: '5-10 minutes',
+    steps: ['Add a skip link as the first focusable element on the page', 'Link it to your main content area', 'Make it visible on focus (can be visually hidden until focused)'],
+    codeExample: `<body>\n  <a href="#main-content" class="skip-link">Skip to main content</a>\n  <nav>...navigation...</nav>\n  <main id="main-content">...content...</main>\n</body>\n\n<style>\n.skip-link { position: absolute; left: -9999px; }\n.skip-link:focus { position: static; }\n</style>`,
+    testHow: 'Press Tab immediately after the page loads — the skip link should appear.',
+    commonMistake: 'Make sure the skip link target (#main-content) actually exists on the page.'
+  },
+  'missing-landmark': {
+    priority: 'MEDIUM — Fix in next sprint',
+    legalRisk: 'LOW — But improves overall navigation significantly',
+    fixTime: '10-20 minutes',
+    steps: ['Use HTML5 semantic elements: <header>, <nav>, <main>, <footer>', 'Ensure there is exactly one <main> element', 'Use <nav> for primary navigation, <aside> for sidebars'],
+    codeExample: `<body>\n  <header>...logo, nav...</header>\n  <nav aria-label="Main navigation">...links...</nav>\n  <main>...page content...</main>\n  <aside>...sidebar...</aside>\n  <footer>...footer content...</footer>\n</body>`,
+    testHow: 'Use a screen reader\'s landmarks shortcut (NVDA: D key, VoiceOver: rotor) to navigate.',
+    commonMistake: 'Don\'t use <div class="header"> when you can use <header>.'
+  },
+  'viewport-scalable-no': {
+    priority: 'CRITICAL — Fix immediately',
+    legalRisk: 'HIGH — Prevents users from zooming text',
+    fixTime: '1 minute',
+    steps: ['Remove user-scalable=no from your viewport meta tag', 'Remove or increase maximum-scale to at least 5'],
+    codeExample: `<!-- BEFORE (violation) -->\n<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1">\n\n<!-- AFTER (fixed) -->\n<meta name="viewport" content="width=device-width, initial-scale=1">`,
+    testHow: 'On a mobile device, try pinch-to-zoom. If it doesn\'t work, the restriction is still active.',
+    commonMistake: 'Some CSS frameworks add this by default. Check your template/boilerplate.'
+  },
+  'missing-focus-style': {
+    priority: 'HIGH — Fix this week',
+    legalRisk: 'HIGH — Keyboard users cannot see where they are on the page',
+    fixTime: '5-10 minutes',
+    steps: ['Remove any outline:none or outline:0 CSS rules', 'Add a visible focus style for interactive elements', 'Use :focus-visible for modern browsers to only show focus on keyboard navigation'],
+    codeExample: `/* BEFORE (violation) */\n*:focus { outline: none; }\n\n/* AFTER (fixed) */\n*:focus-visible {\n  outline: 2px solid #4A90D9;\n  outline-offset: 2px;\n}`,
+    testHow: 'Tab through your page — every interactive element should have a visible outline/ring.',
+    commonMistake: 'Designers often remove outlines for aesthetics. :focus-visible is the compromise.'
+  },
+  'duplicate-id': {
+    priority: 'HIGH — Fix this week',
+    legalRisk: 'MEDIUM — Breaks label associations and ARIA references',
+    fixTime: '5-15 minutes',
+    steps: ['Search your HTML for duplicate id values', 'Make each id unique', 'Update any references (label for, aria-labelledby, etc.)'],
+    codeExample: `<!-- BEFORE (violation) -->\n<input id="name" ...> <!-- in form 1 -->\n<input id="name" ...> <!-- in form 2 -->\n\n<!-- AFTER (fixed) -->\n<input id="billing-name" ...>\n<input id="shipping-name" ...>`,
+    testHow: 'Run document.querySelectorAll("[id]") in console and check for duplicates.',
+    commonMistake: 'This often happens with repeated components/templates. Use unique prefixes.'
+  },
+  'generic-link-text': {
+    priority: 'MEDIUM — Fix in next sprint',
+    legalRisk: 'MEDIUM — "Click here" links are meaningless out of context',
+    fixTime: '2-5 minutes per link',
+    steps: ['Replace "click here", "read more", "learn more" with descriptive text', 'The link text alone should explain the destination'],
+    codeExample: `<!-- BEFORE (violation) -->\nTo see our pricing, <a href="/pricing">click here</a>.\n\n<!-- AFTER (fixed) -->\n<a href="/pricing">View our pricing plans</a>.`,
+    testHow: 'Read just the link text aloud — does it make sense without surrounding text?',
+    commonMistake: 'Screen reader users often navigate by listing all links. "Click here" x20 is useless.'
+  },
+  'iframe-no-title': {
+    priority: 'HIGH — Fix this week',
+    legalRisk: 'MEDIUM — Screen readers announce "frame" with no description',
+    fixTime: '1 minute per iframe',
+    steps: ['Add a title attribute to each iframe describing its content'],
+    codeExample: `<!-- BEFORE -->\n<iframe src="https://maps.google.com/..."></iframe>\n\n<!-- AFTER -->\n<iframe src="https://maps.google.com/..." title="Google Maps showing our office location"></iframe>`,
+    testHow: 'Use a screen reader — it should announce the iframe\'s purpose.',
+    commonMistake: 'Don\'t use title="iframe" — describe what\'s actually in the iframe.'
+  },
+  'missing-keyboard-access': {
+    priority: 'CRITICAL — Fix immediately',
+    legalRisk: 'HIGH — Entire features become inaccessible to keyboard users',
+    fixTime: '5-10 minutes per element',
+    steps: ['Replace onclick on divs/spans with proper <button> or <a> elements', 'If you must use a non-interactive element, add tabindex="0" and a keydown handler', 'Add role="button" for clickable non-button elements'],
+    codeExample: `<!-- BEFORE (violation) -->\n<div onclick="openMenu()">Menu</div>\n\n<!-- AFTER (fixed — best: use a button) -->\n<button onclick="openMenu()">Menu</button>\n\n<!-- AFTER (fixed — if div required) -->\n<div role="button" tabindex="0" onclick="openMenu()" onkeydown="if(event.key==='Enter'||event.key===' ')openMenu()">Menu</div>`,
+    testHow: 'Unplug your mouse. Can you access everything with just Tab, Enter, and Space?',
+    commonMistake: 'tabindex="0" alone isn\'t enough — you also need keyboard event handlers.'
+  },
+  'aria-hidden-focus': {
+    priority: 'CRITICAL — Fix immediately',
+    legalRisk: 'HIGH — Creates invisible keyboard traps',
+    fixTime: '5-10 minutes',
+    steps: ['Find elements with aria-hidden="true" that contain focusable children', 'Either remove aria-hidden or add tabindex="-1" to all focusable children'],
+    codeExample: `<!-- BEFORE (violation) -->\n<div aria-hidden="true">\n  <button>Close</button>\n</div>\n\n<!-- AFTER (fixed) -->\n<div aria-hidden="true">\n  <button tabindex="-1">Close</button>\n</div>`,
+    testHow: 'Tab through the page — you should never focus something you can\'t see/hear.',
+    commonMistake: 'This often happens with modals that are hidden but still in the DOM.'
+  }
+};
+
+// Generate remediation guide for a scan result
+function generateRemediationGuide(scanResult) {
+  const guides = [];
+  for (const issue of (scanResult.issues || [])) {
+    const guide = REMEDIATION_GUIDES[issue.id];
+    if (guide) {
+      guides.push({
+        ruleId: issue.id,
+        ruleName: issue.name,
+        wcag: issue.wcag,
+        count: issue.count || 1,
+        ...guide
+      });
+    } else {
+      // Generic guide for rules without specific remediation
+      guides.push({
+        ruleId: issue.id,
+        ruleName: issue.name,
+        wcag: issue.wcag,
+        count: issue.count || 1,
+        priority: issue.impact === 'critical' ? 'CRITICAL — Fix immediately' : issue.impact === 'serious' ? 'HIGH — Fix this week' : 'MEDIUM — Fix in next sprint',
+        legalRisk: issue.impact === 'critical' ? 'HIGH' : 'MEDIUM',
+        fixTime: '5-15 minutes',
+        steps: ['Review the WCAG guideline: ' + issue.wcag, 'Identify affected elements', 'Apply the fix described in the WCAG understanding document', 'Test with a screen reader'],
+        codeExample: '',
+        testHow: 'Test with axe DevTools browser extension and a screen reader.',
+        commonMistake: 'Check the WCAG understanding document for common failure patterns.'
+      });
+    }
+  }
+  // Sort by legal risk
+  const riskOrder = { 'HIGH': 0, 'MEDIUM': 1, 'LOW': 2 };
+  guides.sort((a, b) => {
+    const aRisk = Object.keys(riskOrder).find(r => (a.legalRisk || '').startsWith(r)) || 'LOW';
+    const bRisk = Object.keys(riskOrder).find(r => (b.legalRisk || '').startsWith(r)) || 'LOW';
+    return (riskOrder[aRisk] || 2) - (riskOrder[bRisk] || 2);
+  });
+  return guides;
+}
+
 // ==================== API ROUTES ====================
+
+// Remediation guide endpoint
+app.get('/api/scan/:id/remediation', (req, res) => {
+  const scan = scanHistory.find(s => s.id === req.params.id);
+  if (!scan) return res.status(404).json({ error: 'Scan not found' });
+  const guides = generateRemediationGuide(scan);
+  res.json({
+    url: scan.url,
+    scanId: scan.id,
+    score: scan.score,
+    totalIssues: scan.issues ? scan.issues.length : 0,
+    guides,
+    summary: {
+      critical: guides.filter(g => (g.priority || '').startsWith('CRITICAL')).length,
+      high: guides.filter(g => (g.priority || '').startsWith('HIGH')).length,
+      medium: guides.filter(g => (g.priority || '').startsWith('MEDIUM')).length,
+      estimatedFixTime: guides.reduce((acc, g) => {
+        const match = (g.fixTime || '').match(/(\d+)/);
+        return acc + (match ? parseInt(match[1]) : 5);
+      }, 0) + ' minutes minimum'
+    }
+  });
+});
 
 // Scan endpoint
 app.post('/api/scan', async (req, res) => {
@@ -887,6 +1134,16 @@ app.post('/api/scan', async (req, res) => {
   try {
     const html = await fetchHTML(normalizedUrl);
     const result = scanHTML(html, normalizedUrl);
+    // Enrich issues with remediation guides
+    if (result.issues) {
+      result.issues = result.issues.map(issue => {
+        const guide = REMEDIATION_GUIDES[issue.id];
+        if (guide) {
+          return { ...issue, remediation: { priority: guide.priority, legalRisk: guide.legalRisk, fixTime: guide.fixTime, steps: guide.steps, codeExample: guide.codeExample, testHow: guide.testHow, commonMistake: guide.commonMistake } };
+        }
+        return issue;
+      });
+    }
     const scanRecord = { id: uuidv4(), ...result };
     scanHistory.push(scanRecord);
     saveHistory();
@@ -2541,18 +2798,29 @@ function renderFixPriority(issues) {
   const pointsPerIssue = totalIssues > 0 ? Math.round(100 / (totalIssues + issues.reduce((s,i)=>s+i.count,0)/issues.length)) : 5;
   
   list.innerHTML = top3.map((issue, i) => {
-    const steps = FIX_INSTRUCTIONS[issue.id] || [
+    const rem = issue.remediation || {};
+    const steps = rem.steps || FIX_INSTRUCTIONS[issue.id] || [
       'Review the WCAG guideline: ' + issue.wcag,
       'Check each flagged element and apply the fix',
       'Re-test to confirm the issue is resolved'
     ];
     const pts = Math.max(2, Math.round(pointsPerIssue * (IMPACT_WEIGHT[issue.impact]||1) * 0.8));
+    const codeHtml = rem.codeExample ? \`<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--accent);font-size:0.85rem">📝 Show code fix example</summary><pre style="background:#0d0d1a;padding:12px;border-radius:6px;margin-top:6px;font-size:0.8rem;overflow-x:auto;white-space:pre-wrap;color:#c0c0c0">\${escapeHtml(rem.codeExample)}</pre></details>\` : '';
+    const metaHtml = rem.legalRisk ? \`<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:0.8rem">
+      <span style="color:var(--red)">⚖️ Legal Risk: \${rem.legalRisk.split('—')[0].trim()}</span>
+      <span style="color:var(--muted)">⏱️ \${rem.fixTime || '5-15 min'}</span>
+      \${rem.commonMistake ? \`<span style="color:var(--orange)">⚠️ Common mistake: \${rem.commonMistake.substring(0, 80)}</span>\` : ''}
+    </div>\` : '';
+    const testHtml = rem.testHow ? \`<div style="margin-top:6px;font-size:0.8rem;color:var(--muted)">🧪 How to verify: \${rem.testHow}</div>\` : '';
     return \`<div class="fix-item \${issue.impact}">
       <div class="fix-item-header">
         <span class="fix-item-name">\${i+1}. \${issue.name} <span style="font-weight:400;color:var(--muted)">(\${issue.count} found)</span></span>
         <span class="fix-item-impact impact-\${issue.impact}">\${issue.impact}</span>
       </div>
+      \${metaHtml}
       <ol class="fix-steps">\${steps.map(s => '<li>' + s + '</li>').join('')}</ol>
+      \${codeHtml}
+      \${testHtml}
       <div class="fix-item-points">🎯 Est. +\${pts} points when fixed</div>
     </div>\`;
   }).join('');
