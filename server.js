@@ -187,6 +187,90 @@ const WCAG_RULES = {
     wcag: 'WCAG 2.1 SC 2.1.1', level: 'A', principle: 'Operable',
     description: 'Elements with click handlers (onclick) that are not natively interactive (links, buttons) must also have keyboard access via tabindex and keydown handlers.',
     impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/keyboard.html'
+  },
+  'duplicate-id': {
+    id: 'duplicate-id', name: 'Duplicate element IDs',
+    wcag: 'WCAG 2.1 SC 4.1.1', level: 'A', principle: 'Robust',
+    description: 'Element IDs must be unique. Duplicate IDs break label associations, ARIA references, and fragment navigation.',
+    impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/parsing.html'
+  },
+  'invalid-aria-role': {
+    id: 'invalid-aria-role', name: 'Invalid ARIA roles',
+    wcag: 'WCAG 2.1 SC 4.1.2', level: 'A', principle: 'Robust',
+    description: 'ARIA role values must be valid WAI-ARIA roles. Invalid roles are ignored by assistive technology.',
+    impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html'
+  },
+  'aria-hidden-focus': {
+    id: 'aria-hidden-focus', name: 'Focusable elements hidden from assistive tech',
+    wcag: 'WCAG 2.1 SC 4.1.2', level: 'A', principle: 'Robust',
+    description: 'Elements with aria-hidden="true" must not contain focusable elements, as they become invisible to screen readers but still receive focus.',
+    impact: 'critical', url: 'https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html'
+  },
+  'missing-aria-label': {
+    id: 'missing-aria-label', name: 'ARIA widgets missing accessible names',
+    wcag: 'WCAG 2.1 SC 4.1.2', level: 'A', principle: 'Robust',
+    description: 'Elements with interactive ARIA roles (dialog, alertdialog, tabpanel) must have an accessible name via aria-label or aria-labelledby.',
+    impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html'
+  },
+  'viewport-scalable-no': {
+    id: 'viewport-scalable-no', name: 'Text resize disabled',
+    wcag: 'WCAG 2.1 SC 1.4.4', level: 'AA', principle: 'Perceivable',
+    description: 'The viewport meta tag must not set user-scalable=no or maximum-scale less than 2, as this prevents users from zooming.',
+    impact: 'critical', url: 'https://www.w3.org/WAI/WCAG21/Understanding/resize-text.html'
+  },
+  'image-map-no-alt': {
+    id: 'image-map-no-alt', name: 'Image map areas missing alt text',
+    wcag: 'WCAG 2.1 SC 1.1.1', level: 'A', principle: 'Perceivable',
+    description: 'Each <area> in an image map must have alt text describing its purpose.',
+    impact: 'critical', url: 'https://www.w3.org/WAI/WCAG21/Understanding/non-text-content.html'
+  },
+  'link-new-window': {
+    id: 'link-new-window', name: 'Links open new window without warning',
+    wcag: 'WCAG 2.1 SC 3.2.5', level: 'AAA', principle: 'Understandable',
+    description: 'Links that open in a new window/tab (target="_blank") should warn users, e.g., "(opens in new tab)".',
+    impact: 'minor', url: 'https://www.w3.org/WAI/WCAG21/Understanding/change-on-request.html'
+  },
+  'missing-table-caption': {
+    id: 'missing-table-caption', name: 'Data tables missing captions',
+    wcag: 'WCAG 2.1 SC 1.3.1', level: 'A', principle: 'Perceivable',
+    description: 'Data tables should have a <caption> element describing the table\'s purpose for screen reader users.',
+    impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html'
+  },
+  'iframe-no-title': {
+    id: 'iframe-no-title', name: 'Iframes missing title attribute',
+    wcag: 'WCAG 2.1 SC 2.4.1', level: 'A', principle: 'Operable',
+    description: 'Each iframe must have a title attribute that describes its content for screen reader users.',
+    impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/bypass-blocks.html'
+  },
+  'accesskey-duplicate': {
+    id: 'accesskey-duplicate', name: 'Duplicate accesskey values',
+    wcag: 'WCAG 2.1 SC 4.1.1', level: 'A', principle: 'Robust',
+    description: 'Accesskey values must be unique. Duplicates cause unpredictable behavior for keyboard users.',
+    impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/parsing.html'
+  },
+  'marquee-blink': {
+    id: 'marquee-blink', name: 'Marquee or blink elements',
+    wcag: 'WCAG 2.1 SC 2.2.2', level: 'A', principle: 'Operable',
+    description: 'Moving, blinking, or scrolling content (marquee, blink) must have a mechanism to pause, stop, or hide.',
+    impact: 'serious', url: 'https://www.w3.org/WAI/WCAG21/Understanding/pause-stop-hide.html'
+  },
+  'autocomplete-missing': {
+    id: 'autocomplete-missing', name: 'Input fields missing autocomplete',
+    wcag: 'WCAG 2.1 SC 1.3.5', level: 'AA', principle: 'Perceivable',
+    description: 'Form fields that collect personal information should have appropriate autocomplete attributes to help users fill them.',
+    impact: 'moderate', url: 'https://www.w3.org/WAI/WCAG21/Understanding/identify-input-purpose.html'
+  },
+  'text-justified': {
+    id: 'text-justified', name: 'Justified text blocks',
+    wcag: 'WCAG 2.1 SC 1.4.8', level: 'AAA', principle: 'Perceivable',
+    description: 'Fully justified text creates uneven spacing that can be difficult to read for users with cognitive disabilities.',
+    impact: 'minor', url: 'https://www.w3.org/WAI/WCAG21/Understanding/visual-presentation.html'
+  },
+  'title-redundant': {
+    id: 'title-redundant', name: 'Redundant title attributes',
+    wcag: 'WCAG 2.1 SC 4.1.2', level: 'A', principle: 'Robust',
+    description: 'Title attributes that duplicate visible text create redundant announcements for screen reader users.',
+    impact: 'minor', url: 'https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html'
   }
 };
 
@@ -551,16 +635,203 @@ function scanHTML(html, url) {
   if (noKeyboard.length > 0) addIssue('missing-keyboard-access', noKeyboard);
   else addPass('missing-keyboard-access');
 
-  // Calculate score
-  const totalChecks = issues.length + passes.length;
-  const score = totalChecks > 0 ? Math.round((passes.length / totalChecks) * 100) : 0;
+  // 22. Duplicate IDs
+  const idMap = {};
+  $('[id]').each((i, el) => {
+    const id = $(el).attr('id');
+    if (id) { if (!idMap[id]) idMap[id] = 0; idMap[id]++; }
+  });
+  const dupIds = Object.entries(idMap).filter(([,c]) => c > 1).map(([id, c]) => `id="${id}" used ${c} times`);
+  if (dupIds.length > 0) addIssue('duplicate-id', dupIds);
+  else addPass('duplicate-id');
 
+  // 23. Invalid ARIA roles
+  const validRoles = ['alert','alertdialog','application','article','banner','button','cell','checkbox','columnheader','combobox','complementary','contentinfo','definition','dialog','directory','document','feed','figure','form','grid','gridcell','group','heading','img','link','list','listbox','listitem','log','main','marquee','math','menu','menubar','menuitem','menuitemcheckbox','menuitemradio','navigation','none','note','option','presentation','progressbar','radio','radiogroup','region','row','rowgroup','rowheader','scrollbar','search','searchbox','separator','slider','spinbutton','status','switch','tab','table','tablist','tabpanel','term','textbox','timer','toolbar','tooltip','tree','treegrid','treeitem'];
+  const invalidRoles = [];
+  $('[role]').each((i, el) => {
+    const role = ($(el).attr('role') || '').trim().toLowerCase();
+    if (role && !validRoles.includes(role)) {
+      invalidRoles.push(`<${el.tagName} role="${role}">`);
+    }
+  });
+  if (invalidRoles.length > 0) addIssue('invalid-aria-role', invalidRoles);
+  else addPass('invalid-aria-role');
+
+  // 24. aria-hidden with focusable children
+  const ariaHiddenFocus = [];
+  $('[aria-hidden="true"]').each((i, el) => {
+    const focusable = $(el).find('a[href], button, input, select, textarea, [tabindex]');
+    if (focusable.length > 0) {
+      ariaHiddenFocus.push(`<${el.tagName} aria-hidden="true"> contains ${focusable.length} focusable element(s)`);
+    }
+  });
+  if (ariaHiddenFocus.length > 0) addIssue('aria-hidden-focus', ariaHiddenFocus);
+  else addPass('aria-hidden-focus');
+
+  // 25. ARIA widgets missing accessible names
+  const ariaWidgetRoles = ['dialog', 'alertdialog', 'tabpanel', 'tablist', 'toolbar', 'menu', 'menubar', 'tree', 'grid', 'treegrid', 'listbox'];
+  const missingAriaNames = [];
+  ariaWidgetRoles.forEach(role => {
+    $(`[role="${role}"]`).each((i, el) => {
+      const ariaLabel = $(el).attr('aria-label') || $(el).attr('aria-labelledby') || $(el).attr('title');
+      if (!ariaLabel) {
+        missingAriaNames.push(`<${el.tagName} role="${role}"> missing aria-label`);
+      }
+    });
+  });
+  if (missingAriaNames.length > 0) addIssue('missing-aria-label', missingAriaNames);
+  else addPass('missing-aria-label');
+
+  // 26. Viewport prevents text resize
+  if (viewport) {
+    const scalableNo = viewport.match(/user-scalable\s*=\s*no/i);
+    const maxScaleMatch = viewport.match(/maximum-scale\s*=\s*([\d.]+)/i);
+    const maxScale = maxScaleMatch ? parseFloat(maxScaleMatch[1]) : null;
+    if (scalableNo || (maxScale !== null && maxScale < 2)) {
+      addIssue('viewport-scalable-no', [`<meta name="viewport" content="${viewport.substring(0,80)}">`]);
+    } else {
+      addPass('viewport-scalable-no');
+    }
+  }
+
+  // 27. Image map areas without alt
+  const areaNoAlt = [];
+  $('area').each((i, el) => {
+    const alt = $(el).attr('alt');
+    if (alt === undefined || alt.trim() === '') {
+      const href = ($(el).attr('href') || '').substring(0, 60);
+      areaNoAlt.push(`<area href="${href}"> missing alt`);
+    }
+  });
+  if (areaNoAlt.length > 0) addIssue('image-map-no-alt', areaNoAlt);
+  else if ($('area').length > 0) addPass('image-map-no-alt');
+
+  // 28. Links opening new window without warning
+  const newWindowLinks = [];
+  $('a[target="_blank"]').each((i, el) => {
+    const text = $(el).text().trim().toLowerCase();
+    const ariaLabel = ($(el).attr('aria-label') || '').toLowerCase();
+    const title = ($(el).attr('title') || '').toLowerCase();
+    const combined = text + ' ' + ariaLabel + ' ' + title;
+    if (!combined.match(/new\s*(window|tab)|opens?\s*(in|a)\s*(new|external)|external/i)) {
+      const href = ($(el).attr('href') || '').substring(0, 50);
+      newWindowLinks.push(`"${$(el).text().trim().substring(0,30) || '(no text)'}" → ${href}`);
+    }
+  });
+  if (newWindowLinks.length > 0) addIssue('link-new-window', newWindowLinks);
+  else if ($('a[target="_blank"]').length > 0) addPass('link-new-window');
+
+  // 29. Data tables missing captions
+  const tablesNoCaptions = [];
+  dataTables.each((i, el) => {
+    if ($(el).find('caption').length === 0 && !$(el).attr('aria-label') && !$(el).attr('aria-labelledby')) {
+      tablesNoCaptions.push('<table> without <caption> or aria-label');
+    }
+  });
+  if (tablesNoCaptions.length > 0) addIssue('missing-table-caption', tablesNoCaptions);
+  else if (dataTables.length > 0) addPass('missing-table-caption');
+
+  // 30. Iframes without title
+  const iframeNoTitle = [];
+  $('iframe').each((i, el) => {
+    const t = $(el).attr('title');
+    const ariaLabel = $(el).attr('aria-label');
+    if (!t && !ariaLabel) {
+      const src = ($(el).attr('src') || '').substring(0, 60);
+      iframeNoTitle.push(`<iframe src="${src}"> missing title`);
+    }
+  });
+  if (iframeNoTitle.length > 0) addIssue('iframe-no-title', iframeNoTitle);
+  else if ($('iframe').length > 0) addPass('iframe-no-title');
+
+  // 31. Duplicate accesskey values
+  const accessKeyMap = {};
+  $('[accesskey]').each((i, el) => {
+    const key = $(el).attr('accesskey');
+    if (key) { if (!accessKeyMap[key]) accessKeyMap[key] = 0; accessKeyMap[key]++; }
+  });
+  const dupAccessKeys = Object.entries(accessKeyMap).filter(([,c]) => c > 1).map(([k, c]) => `accesskey="${k}" used ${c} times`);
+  if (dupAccessKeys.length > 0) addIssue('accesskey-duplicate', dupAccessKeys);
+  else if ($('[accesskey]').length > 0) addPass('accesskey-duplicate');
+
+  // 32. Marquee/blink elements
+  const marqueeEls = [];
+  $('marquee, blink').each((i, el) => { marqueeEls.push(`<${el.tagName}>`); });
+  if (marqueeEls.length > 0) addIssue('marquee-blink', marqueeEls);
+  else addPass('marquee-blink');
+
+  // 33. Autocomplete missing on personal info fields
+  const personalInputTypes = { email: 'email', tel: 'tel', password: 'current-password' };
+  const personalNames = { name: 'name', email: 'email', phone: 'tel', address: 'street-address', city: 'address-level2', state: 'address-level1', zip: 'postal-code', 'postal-code': 'postal-code', 'first-name': 'given-name', 'last-name': 'family-name', firstname: 'given-name', lastname: 'family-name', 'cc-number': 'cc-number' };
+  const missingAC = [];
+  $('input').each((i, el) => {
+    const type = $(el).attr('type') || 'text';
+    const name = ($(el).attr('name') || '').toLowerCase();
+    const ac = $(el).attr('autocomplete');
+    if (['hidden', 'submit', 'button', 'reset', 'checkbox', 'radio', 'file', 'image'].includes(type)) return;
+    if (!ac && (personalInputTypes[type] || Object.keys(personalNames).some(p => name.includes(p)))) {
+      missingAC.push(`<input name="${$(el).attr('name') || ''}" type="${type}"> missing autocomplete`);
+    }
+  });
+  if (missingAC.length > 0) addIssue('autocomplete-missing', missingAC);
+  else addPass('autocomplete-missing');
+
+  // 34. Justified text
+  const justifiedText = [];
+  $('[style]').each((i, el) => {
+    const style = $(el).attr('style') || '';
+    if (style.match(/text-align\s*:\s*justify/i)) {
+      const text = $(el).text().trim().substring(0, 40);
+      justifiedText.push(`<${el.tagName}> "${text || '(element)'}"`);
+    }
+  });
+  // Also check style tags
+  if (stylesheetText.match(/text-align\s*:\s*justify/i)) {
+    justifiedText.push('CSS rule with text-align: justify');
+  }
+  if (justifiedText.length > 0) addIssue('text-justified', justifiedText);
+  else addPass('text-justified');
+
+  // 35. Redundant title attributes
+  const redundantTitles = [];
+  $('a[title], button[title]').each((i, el) => {
+    const text = $(el).text().trim();
+    const titleAttr = ($(el).attr('title') || '').trim();
+    if (text && titleAttr && text.toLowerCase() === titleAttr.toLowerCase()) {
+      redundantTitles.push(`<${el.tagName}> text="${text.substring(0,30)}" title="${titleAttr.substring(0,30)}"`);
+    }
+  });
+  if (redundantTitles.length > 0) addIssue('title-redundant', redundantTitles);
+  else addPass('title-redundant');
+
+  // Calculate score (weighted by impact)
+  const impactWeights = { critical: 5, serious: 3, moderate: 1.5, minor: 0.5 };
+  let totalWeight = 0;
+  let passedWeight = 0;
+  issues.forEach(i => { totalWeight += (impactWeights[i.impact] || 1); });
+  passes.forEach(p => {
+    const rule = WCAG_RULES[p.id];
+    const w = rule ? (impactWeights[rule.impact] || 1) : 1;
+    totalWeight += w;
+    passedWeight += w;
+  });
+  const score = totalWeight > 0 ? Math.round((passedWeight / totalWeight) * 100) : 100;
+
+  const totalChecks = issues.length + passes.length;
   const criticalIssues = issues.filter(i => i.impact === 'critical').length;
   const seriousIssues = issues.filter(i => i.impact === 'serious').length;
   let complianceLevel = 'compliant';
   if (criticalIssues > 0) complianceLevel = 'non-compliant';
   else if (seriousIssues > 1) complianceLevel = 'partially-compliant';
   else if (issues.length > 0) complianceLevel = 'needs-improvement';
+
+  // Conformance levels
+  const levelAIssues = issues.filter(i => i.level === 'A');
+  const levelAAIssues = issues.filter(i => i.level === 'AA');
+  const levelAAAIssues = issues.filter(i => i.level === 'AAA');
+  const conformsA = levelAIssues.length === 0;
+  const conformsAA = conformsA && levelAAIssues.length === 0;
+  const conformsAAA = conformsAA && levelAAAIssues.length === 0;
 
   return {
     url,
@@ -576,6 +847,14 @@ function scanHTML(html, url) {
       serious: seriousIssues,
       moderate: issues.filter(i => i.impact === 'moderate').length,
       minor: issues.filter(i => i.impact === 'minor').length
+    },
+    conformance: {
+      levelA: conformsA,
+      levelAA: conformsAA,
+      levelAAA: conformsAAA,
+      levelAIssues: levelAIssues.length,
+      levelAAIssues: levelAAIssues.length,
+      levelAAAIssues: levelAAAIssues.length
     },
     issues,
     warnings,
@@ -1115,6 +1394,39 @@ a{color:var(--accent2);text-decoration:none}
 .issue-desc{font-size:0.85rem;color:var(--muted)}
 .issue-elements{font-family:monospace;font-size:0.75rem;background:#1a1a2e;padding:8px;border-radius:6px;margin-top:8px;color:var(--orange);overflow-x:auto}
 .issue-link{font-size:0.75rem;color:var(--accent2);margin-top:4px;display:inline-block}
+.issue-badges{display:flex;gap:6px;align-items:center}
+.issue-count{font-weight:400;color:var(--muted)}
+.level-badge{font-size:0.65rem;padding:2px 6px;border-radius:3px;font-weight:800;letter-spacing:0.5px}
+.level-A{background:rgba(231,76,60,0.2);color:#e74c3c}
+.level-AA{background:rgba(230,126,34,0.2);color:#e67e22}
+.level-AAA{background:rgba(46,204,113,0.2);color:#2ecc71}
+.conf-badges{display:flex;gap:8px;justify-content:center;margin:8px 0}
+.conf-badge{padding:6px 14px;border-radius:8px;font-size:0.8rem;font-weight:700}
+.conf-pass{background:rgba(0,184,148,0.15);color:var(--green);border:1px solid rgba(0,184,148,0.3)}
+.conf-fail{background:rgba(231,76,60,0.1);color:var(--red);border:1px solid rgba(231,76,60,0.2)}
+.sev-bar{display:flex;border-radius:8px;overflow:hidden;margin:8px 0;height:24px;font-size:0.7rem}
+.sev-seg{display:flex;align-items:center;justify-content:center;color:white;font-weight:600;min-width:40px}
+.sev-critical{background:#e74c3c}
+.sev-serious{background:#e67e22}
+.sev-moderate{background:#f1c40f;color:#333}
+.sev-minor{background:#95a5a6}
+.how-to-fix{margin-top:8px;font-size:0.82rem}
+.how-to-fix summary{cursor:pointer;color:var(--accent2);font-weight:600;padding:4px 0}
+.how-to-fix summary:hover{color:var(--accent)}
+.how-to-fix ol{padding-left:20px;margin-top:6px;color:var(--muted)}
+.how-to-fix li{margin-bottom:4px}
+.how-to-fix code{background:#1a1a2e;padding:1px 5px;border-radius:3px;font-size:0.8em;color:var(--accent2)}
+.quick-fix{margin-top:8px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.quick-fix-label{padding:8px 12px;cursor:pointer;font-size:0.8rem;font-weight:600;color:var(--accent2);display:flex;justify-content:space-between;align-items:center}
+.quick-fix-label:hover{background:rgba(108,92,231,0.08)}
+.quick-fix-body{display:none;padding:0 12px 12px}
+.quick-fix.open .quick-fix-body{display:block}
+.quick-fix.open .chevron{transform:rotate(180deg)}
+.quick-fix pre{font-size:0.75rem;padding:10px;border-radius:6px;overflow-x:auto;white-space:pre-wrap;word-break:break-word;margin:4px 0}
+.quick-fix-before pre{background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.2);color:#e88}
+.quick-fix-after pre{background:rgba(0,184,148,0.08);border:1px solid rgba(0,184,148,0.2);color:#6fc}
+.qf-label{font-size:0.7rem;font-weight:700;display:block;margin-bottom:2px}
+.issue-elements code{display:block;padding:2px 0;font-size:0.78rem;color:var(--orange)}
 .passes-section{margin-top:20px}
 .pass-item{display:inline-block;background:rgba(0,184,148,0.1);color:var(--green);padding:6px 12px;border-radius:6px;font-size:0.8rem;margin:3px}
 .action-btns{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
@@ -1330,7 +1642,7 @@ footer{text-align:center;padding:40px 0;color:var(--muted);font-size:0.85rem;bor
       <input type="text" class="scanner-input" id="urlInput" placeholder="Enter any website URL (e.g., example.com)" />
       <button class="scanner-btn" id="scanBtn" onclick="runScan()">Scan Now</button>
     </div>
-    <div class="scanner-hint">Free unlimited scans • No signup required • 23 WCAG checks • Results in seconds</div>
+    <div class="scanner-hint">Free unlimited scans • No signup required • 38 WCAG checks • Results in seconds</div>
 
     <div class="loading" id="loading">
       <div class="spinner"></div>
@@ -1344,6 +1656,8 @@ footer{text-align:center;padding:40px 0;color:var(--muted);font-size:0.85rem;bor
         <div class="score-label">Accessibility Score</div>
       </div>
       <div class="compliance-status" id="complianceStatus"></div>
+      <div id="conformanceBadges"></div>
+      <div id="severityBar"></div>
 
       <div class="stats-row">
         <div class="stat"><div class="stat-num" id="statIssues" style="color:var(--red)">0</div><div class="stat-label">Issues</div></div>
@@ -1558,7 +1872,7 @@ footer{text-align:center;padding:40px 0;color:var(--muted);font-size:0.85rem;bor
       <div class="price-card">
         <h3>Free</h3><div class="subtitle">For quick checks</div>
         <div class="price">$0</div>
-        <ul><li>Unlimited scans</li><li>23 WCAG checks</li><li>PDF export</li><li>Score trends</li><li>Compliance badge</li></ul>
+        <ul><li>Unlimited scans</li><li>38 WCAG checks</li><li>PDF export</li><li>Score trends</li><li>Compliance badge</li></ul>
         <button class="price-btn" onclick="document.getElementById('urlInput').focus()">Start Scanning</button>
       </div>
       <div class="price-card featured">
@@ -1578,12 +1892,13 @@ footer{text-align:center;padding:40px 0;color:var(--muted);font-size:0.85rem;bor
 
   <footer>
     <p>🛡️ ComplianceShield — Protect your business from ADA lawsuits</p>
-    <p style="margin-top:8px">23 WCAG checks • Color contrast analysis • Keyboard navigation • Link quality • Score trends</p>
+    <p style="margin-top:8px">38 WCAG checks • Color contrast analysis • Keyboard navigation • Link quality • Score trends</p>
     <p style="margin-top:8px">Built with care • <a href="https://github.com/beepboop-dev/gamma-project">GitHub</a></p>
   </footer>
 </div>
 
 <script>
+const WCAG_RULES_CLIENT = ${JSON.stringify(Object.keys(WCAG_RULES))};
 let currentScan = null;
 
 // ===== localStorage scan history =====
@@ -1630,11 +1945,13 @@ renderRecentScans();
 
 // ===== Issue Categories =====
 const ISSUE_CATEGORIES = {
-  'Images': { icon: '🖼️', rules: ['missing-alt', 'empty-alt'] },
-  'Forms': { icon: '📝', rules: ['missing-form-label'] },
-  'Navigation': { icon: '🧭', rules: ['empty-link', 'empty-button', 'no-skip-link', 'missing-landmark', 'tabindex-positive', 'generic-link-text'] },
-  'Content': { icon: '📄', rules: ['missing-lang', 'missing-title', 'missing-heading', 'skipped-heading', 'missing-table-header', 'meta-refresh', 'autoplay-media', 'low-contrast-text', 'inline-styles-text', 'color-contrast-inline'] },
-  'Keyboard': { icon: '⌨️', rules: ['keyboard-trap', 'missing-focus-style', 'missing-keyboard-access'] }
+  'Images & Media': { icon: '🖼️', rules: ['missing-alt', 'empty-alt', 'image-map-no-alt', 'autoplay-media'] },
+  'Forms & Inputs': { icon: '📝', rules: ['missing-form-label', 'autocomplete-missing'] },
+  'Navigation & Links': { icon: '🧭', rules: ['empty-link', 'empty-button', 'no-skip-link', 'missing-landmark', 'tabindex-positive', 'generic-link-text', 'link-new-window'] },
+  'Structure & Semantics': { icon: '📄', rules: ['missing-lang', 'missing-title', 'missing-heading', 'skipped-heading', 'missing-table-header', 'missing-table-caption', 'meta-refresh', 'iframe-no-title', 'marquee-blink'] },
+  'Visual & Contrast': { icon: '🎨', rules: ['low-contrast-text', 'inline-styles-text', 'color-contrast-inline', 'missing-viewport', 'viewport-scalable-no', 'text-justified'] },
+  'Keyboard & Focus': { icon: '⌨️', rules: ['keyboard-trap', 'missing-focus-style', 'missing-keyboard-access'] },
+  'ARIA & Semantics': { icon: '🏷️', rules: ['duplicate-id', 'invalid-aria-role', 'aria-hidden-focus', 'missing-aria-label', 'title-redundant', 'accesskey-duplicate'] }
 };
 
 function categorizeIssues(issues) {
@@ -1655,18 +1972,33 @@ function renderCategorizedIssues(issues) {
   const cats = categorizeIssues(issues);
   return Object.entries(cats).filter(([,c]) => c.issues.length > 0).map(([name, cat]) => {
     const totalCount = cat.issues.reduce((s,i) => s + i.count, 0);
-    const issuesHtml = cat.issues.map(issue => \`
+    const issuesHtml = cat.issues.sort((a,b) => ({critical:0,serious:1,moderate:2,minor:3}[a.impact]||4) - ({critical:0,serious:1,moderate:2,minor:3}[b.impact]||4)).map(issue => {
+      const fix = QUICK_FIX_SNIPPETS[issue.id];
+      const fixHtml = fix ? \`<div class="quick-fix">
+        <div class="quick-fix-label" onclick="this.parentElement.classList.toggle('open')">💡 Quick Fix Code <span class="chevron">▼</span></div>
+        <div class="quick-fix-body">
+          <div class="quick-fix-before"><span class="qf-label">❌ Before:</span><pre>\${escapeHtml(fix.before.replace(/\\\\n/g,'\\n'))}</pre></div>
+          <div class="quick-fix-after"><span class="qf-label">✅ After:</span><pre>\${escapeHtml(fix.after.replace(/\\\\n/g,'\\n'))}</pre></div>
+        </div>
+      </div>\` : '';
+      const howToFix = (FIX_INSTRUCTIONS[issue.id] || []).map(s => '<li>' + s + '</li>').join('');
+      return \`
       <div class="issue-item \${issue.impact}">
         <div class="issue-header">
-          <span class="issue-name">\${issue.name} (\${issue.count})</span>
-          <span class="issue-impact impact-\${issue.impact}">\${issue.impact}</span>
+          <span class="issue-name">\${issue.name} <span class="issue-count">(\${issue.count})</span></span>
+          <div class="issue-badges">
+            <span class="level-badge level-\${issue.level}">\${issue.level}</span>
+            <span class="issue-impact impact-\${issue.impact}">\${issue.impact}</span>
+          </div>
         </div>
-        <div class="issue-wcag">📋 \${issue.wcag} — Level \${issue.level} (\${issue.principle})</div>
+        <div class="issue-wcag">📋 \${issue.wcag} — \${issue.principle}</div>
         <div class="issue-desc">\${issue.description}</div>
-        \${issue.elements && issue.elements.length > 0 ? \`<div class="issue-elements">\${issue.elements.map(e => escapeHtml(e)).join('<br>')}</div>\` : ''}
+        \${issue.elements && issue.elements.length > 0 ? \`<div class="issue-elements"><strong>Found in:</strong><br>\${issue.elements.map(e => '<code>' + escapeHtml(e) + '</code>').join('<br>')}\${issue.count > issue.elements.length ? '<br><span style="color:var(--muted)">...and ' + (issue.count - issue.elements.length) + ' more</span>' : ''}</div>\` : ''}
+        \${howToFix ? \`<details class="how-to-fix"><summary>🔧 How to Fix</summary><ol>\${howToFix}</ol></details>\` : ''}
+        \${fixHtml}
         <a href="\${issue.url}" target="_blank" class="issue-link">📖 WCAG Reference →</a>
       </div>
-    \`).join('');
+    \`;}).join('');
     return \`<div class="category-group">
       <div class="category-header" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
         <h4>\${cat.icon} \${name} <span class="cat-count">\${cat.issues.length} issue\${cat.issues.length>1?'s':''} · \${totalCount} occurrence\${totalCount>1?'s':''}</span></h4>
@@ -1725,9 +2057,40 @@ function displayResults(data) {
   document.getElementById('statWarnings').textContent = data.summary.warnings;
   document.getElementById('badgeBtn').style.display = data.complianceLevel !== 'non-compliant' ? 'inline-block' : 'none';
 
+  // Conformance level badges
+  const confEl = document.getElementById('conformanceBadges');
+  if (confEl && data.conformance) {
+    const c = data.conformance;
+    confEl.innerHTML = \`
+      <div class="conf-badges">
+        <span class="conf-badge \${c.levelA ? 'conf-pass' : 'conf-fail'}">Level A \${c.levelA ? '✓' : '✗ (' + c.levelAIssues + ')'}</span>
+        <span class="conf-badge \${c.levelAA ? 'conf-pass' : 'conf-fail'}">Level AA \${c.levelAA ? '✓' : '✗ (' + c.levelAAIssues + ')'}</span>
+        <span class="conf-badge \${c.levelAAA ? 'conf-pass' : 'conf-fail'}">Level AAA \${c.levelAAA ? '✓' : '✗ (' + c.levelAAAIssues + ')'}</span>
+      </div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:4px">\${data.summary.totalChecks} checks · Weighted scoring · \${WCAG_RULES_CLIENT.length} WCAG criteria</div>
+    \`;
+  }
+
+  // Severity summary bar
+  const sevEl = document.getElementById('severityBar');
+  if (sevEl) {
+    const s = data.summary;
+    const total = s.critical + s.serious + s.moderate + s.minor;
+    if (total > 0) {
+      sevEl.innerHTML = \`<div class="sev-bar">
+        \${s.critical ? \`<div class="sev-seg sev-critical" style="flex:\${s.critical}">\${s.critical} critical</div>\` : ''}
+        \${s.serious ? \`<div class="sev-seg sev-serious" style="flex:\${s.serious}">\${s.serious} serious</div>\` : ''}
+        \${s.moderate ? \`<div class="sev-seg sev-moderate" style="flex:\${s.moderate}">\${s.moderate} moderate</div>\` : ''}
+        \${s.minor ? \`<div class="sev-seg sev-minor" style="flex:\${s.minor}">\${s.minor} minor</div>\` : ''}
+      </div>\`;
+    } else {
+      sevEl.innerHTML = '';
+    }
+  }
+
   // Categorized issues
   document.getElementById('issuesList').innerHTML = data.issues.length > 0
-    ? '<h3 style="color:var(--red);margin:20px 0 12px">🔍 Issues by Category</h3>' + renderCategorizedIssues(data.issues)
+    ? '<h3 style="color:var(--red);margin:20px 0 12px">🔍 Issues Found (' + data.summary.issues + ' rules, grouped by category)</h3>' + renderCategorizedIssues(data.issues)
     : '';
 
   // Save to localStorage
@@ -2055,7 +2418,111 @@ const FIX_INSTRUCTIONS = {
     'Add to <code>&lt;head&gt;</code>: <code>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;</code>',
     'This enables responsive design for mobile users',
     'Don\'t set <code>maximum-scale=1</code> — it prevents zooming'
+  ],
+  'duplicate-id': [
+    'Search for duplicate <code>id</code> values in your HTML',
+    'Make each ID unique — e.g. <code>id="nav-link-1"</code>, <code>id="nav-link-2"</code>',
+    'Label <code>for</code> attributes and ARIA references depend on unique IDs'
+  ],
+  'invalid-aria-role': [
+    'Check the <code>role</code> attribute against the <a href="https://www.w3.org/TR/wai-aria-1.1/#role_definitions" target="_blank">WAI-ARIA spec</a>',
+    'Remove or correct misspelled roles',
+    'Use semantic HTML elements instead of ARIA roles where possible'
+  ],
+  'aria-hidden-focus': [
+    'Remove focusable elements from inside <code>aria-hidden="true"</code> containers',
+    'Or add <code>tabindex="-1"</code> to focusable children to remove them from tab order',
+    'Or remove <code>aria-hidden="true"</code> from the container'
+  ],
+  'missing-aria-label': [
+    'Add <code>aria-label="Description"</code> to the widget element',
+    'Or reference a visible heading: <code>aria-labelledby="heading-id"</code>',
+    'Every interactive ARIA widget needs an accessible name'
+  ],
+  'viewport-scalable-no': [
+    'Remove <code>user-scalable=no</code> from your viewport meta tag',
+    'Set <code>maximum-scale</code> to at least 2.0 (or remove it)',
+    'Correct: <code>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;</code>'
+  ],
+  'image-map-no-alt': [
+    'Add <code>alt</code> text to every <code>&lt;area&gt;</code> element',
+    'Describe the destination or action for each hotspot',
+    'Example: <code>&lt;area alt="Contact page" href="/contact"&gt;</code>'
+  ],
+  'link-new-window': [
+    'Add visual and textual indication: <code>(opens in new tab)</code>',
+    'Or use <code>aria-label</code>: <code>aria-label="Report (opens in new tab)"</code>',
+    'Consider if target="_blank" is truly necessary'
+  ],
+  'missing-table-caption': [
+    'Add <code>&lt;caption&gt;</code> as the first child of <code>&lt;table&gt;</code>',
+    'Describe what data the table contains',
+    'Or use <code>aria-label</code> on the table element'
+  ],
+  'iframe-no-title': [
+    'Add a <code>title</code> attribute: <code>&lt;iframe title="Video player" src="..."&gt;</code>',
+    'Describe what the iframe contains',
+    'For decorative iframes, use <code>aria-hidden="true"</code>'
+  ],
+  'accesskey-duplicate': [
+    'Find all elements with <code>accesskey</code> attributes',
+    'Ensure each value is unique across the page',
+    'Consider removing accesskeys — they often conflict with browser/AT shortcuts'
+  ],
+  'marquee-blink': [
+    'Replace <code>&lt;marquee&gt;</code> with CSS animations that can be paused',
+    'Remove <code>&lt;blink&gt;</code> elements entirely',
+    'Use <code>prefers-reduced-motion</code> media query to respect user preferences'
+  ],
+  'autocomplete-missing': [
+    'Add <code>autocomplete</code> to personal data fields',
+    'Example: <code>&lt;input type="email" autocomplete="email"&gt;</code>',
+    'See the <a href="https://html.spec.whatwg.org/multipage/form-control-infrastructure.html#autofill" target="_blank">full list of values</a>'
+  ],
+  'text-justified': [
+    'Change <code>text-align: justify</code> to <code>text-align: left</code>',
+    'Justified text creates uneven word spacing',
+    'This is especially problematic for users with dyslexia'
+  ],
+  'title-redundant': [
+    'Remove the <code>title</code> attribute when it duplicates the element text',
+    'Use <code>title</code> only to provide additional (not redundant) information',
+    'Screen readers may announce the text twice'
   ]
+};
+
+const QUICK_FIX_SNIPPETS = {
+  'missing-alt': { before: '<img src="photo.jpg">', after: '<img src="photo.jpg" alt="Team photo at company retreat">' },
+  'empty-alt': { before: '<img src="hero.jpg" alt="">', after: '<img src="hero.jpg" alt="Mountain landscape at sunrise">' },
+  'missing-lang': { before: '<html>', after: '<html lang="en">' },
+  'missing-title': { before: '<head>\\n  <!-- no title -->\\n</head>', after: '<head>\\n  <title>About Us - Company Name</title>\\n</head>' },
+  'missing-form-label': { before: '<input type="email" name="email">', after: '<label for="email">Email address</label>\\n<input type="email" name="email" id="email">' },
+  'empty-link': { before: '<a href="/cart"><i class="icon-cart"></i></a>', after: '<a href="/cart" aria-label="Shopping cart">\\n  <i class="icon-cart" aria-hidden="true"></i>\\n</a>' },
+  'empty-button': { before: '<button><svg>...</svg></button>', after: '<button aria-label="Close menu">\\n  <svg aria-hidden="true">...</svg>\\n</button>' },
+  'skipped-heading': { before: '<h1>Page Title</h1>\\n<h3>Subsection</h3>', after: '<h1>Page Title</h1>\\n<h2>Section</h2>\\n<h3>Subsection</h3>' },
+  'missing-landmark': { before: '<div id="main">\\n  Content\\n</div>', after: '<main>\\n  Content\\n</main>' },
+  'color-contrast-inline': { before: '<p style="color: #999; background: #fff">', after: '<p style="color: #595959; background: #fff">\\n<!-- Ratio: 7:1 ✓ -->' },
+  'missing-focus-style': { before: '*:focus { outline: none; }', after: '*:focus-visible {\\n  outline: 2px solid #6c5ce7;\\n  outline-offset: 2px;\\n}' },
+  'generic-link-text': { before: '<a href="/report">Click here</a>', after: '<a href="/report">Download the 2024 annual report</a>' },
+  'missing-keyboard-access': { before: '<div onclick="openMenu()">Menu</div>', after: '<button onclick="openMenu()">Menu</button>\\n<!-- Or: -->\\n<div role="button" tabindex="0"\\n  onclick="openMenu()"\\n  onkeydown="if(event.key===\'Enter\')openMenu()">\\n  Menu\\n</div>' },
+  'keyboard-trap': { before: 'onkeydown="event.preventDefault()"', after: 'onkeydown="if(event.key!==\'Tab\'&&event.key!==\'Escape\') event.preventDefault()"' },
+  'duplicate-id': { before: '<div id="card">A</div>\\n<div id="card">B</div>', after: '<div id="card-1">A</div>\\n<div id="card-2">B</div>' },
+  'invalid-aria-role': { before: '<div role="popup">...</div>', after: '<div role="dialog" aria-label="Settings">...</div>' },
+  'aria-hidden-focus': { before: '<div aria-hidden="true">\\n  <a href="/link">Link</a>\\n</div>', after: '<div aria-hidden="true">\\n  <a href="/link" tabindex="-1">Link</a>\\n</div>' },
+  'missing-aria-label': { before: '<div role="dialog">\\n  <h2>Settings</h2>\\n</div>', after: '<div role="dialog" aria-labelledby="dlg-title">\\n  <h2 id="dlg-title">Settings</h2>\\n</div>' },
+  'viewport-scalable-no': { before: '<meta name="viewport" content="width=device-width, user-scalable=no">', after: '<meta name="viewport" content="width=device-width, initial-scale=1.0">' },
+  'link-new-window': { before: '<a href="/doc.pdf" target="_blank">Report</a>', after: '<a href="/doc.pdf" target="_blank">\\n  Report (opens in new tab)\\n</a>' },
+  'missing-table-caption': { before: '<table>\\n  <tr><th>Name</th>...</tr>\\n</table>', after: '<table>\\n  <caption>Employee directory</caption>\\n  <tr><th>Name</th>...</tr>\\n</table>' },
+  'iframe-no-title': { before: '<iframe src="https://youtube.com/embed/abc"></iframe>', after: '<iframe src="https://youtube.com/embed/abc" title="Product demo video"></iframe>' },
+  'marquee-blink': { before: '<marquee>Breaking news!</marquee>', after: '<div role="alert" aria-live="polite">Breaking news!</div>' },
+  'autocomplete-missing': { before: '<input type="email" name="email">', after: '<input type="email" name="email" autocomplete="email">' },
+  'text-justified': { before: 'p { text-align: justify; }', after: 'p { text-align: left; }' },
+  'title-redundant': { before: '<a href="/home" title="Home">Home</a>', after: '<a href="/home">Home</a>' },
+  'missing-table-header': { before: '<table>\\n  <tr><td>Name</td><td>Age</td></tr>\\n</table>', after: '<table>\\n  <tr><th scope="col">Name</th><th scope="col">Age</th></tr>\\n</table>' },
+  'missing-viewport': { before: '<head>\\n  <!-- no viewport -->\\n</head>', after: '<head>\\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\\n</head>' },
+  'image-map-no-alt': { before: '<area href="/about" shape="rect" coords="0,0,50,50">', after: '<area href="/about" shape="rect" coords="0,0,50,50" alt="About us page">' },
+  'accesskey-duplicate': { before: '<a accesskey="s" href="/save">Save</a>\\n<a accesskey="s" href="/search">Search</a>', after: '<a accesskey="s" href="/save">Save</a>\\n<a accesskey="f" href="/search">Search</a>' },
+  'no-skip-link': { before: '<body>\\n  <nav>...</nav>\\n  <main>Content</main>\\n</body>', after: '<body>\\n  <a href="#main" class="skip-link">Skip to main content</a>\\n  <nav>...</nav>\\n  <main id="main">Content</main>\\n</body>' }
 };
 
 const IMPACT_WEIGHT = { critical: 4, serious: 3, moderate: 2, minor: 1 };
@@ -2298,13 +2765,13 @@ app.get('/ada-compliance-checker', (req, res) => {
 <h2>How Our Free ADA Compliance Checker Works</h2>
 <ol>
 <li><strong>Enter your website URL</strong> — Just paste your homepage URL into our scanner</li>
-<li><strong>Get instant results</strong> — Our engine runs 23 WCAG 2.1 checks in seconds</li>
+<li><strong>Get instant results</strong> — Our engine runs 38 WCAG 2.1 checks in seconds</li>
 <li><strong>See exactly what to fix</strong> — Every issue comes with plain-English fix instructions and code examples</li>
 <li><strong>Download your PDF report</strong> — Share with your developer or keep for compliance records</li>
 </ol>
 
 <h2>What We Check</h2>
-<p>ComplianceShield checks your website against 23 critical WCAG 2.1 success criteria:</p>
+<p>ComplianceShield checks your website against 38 critical WCAG 2.1 success criteria:</p>
 <ul>
 <li>Image alt text (SC 1.1.1) — The #1 most common violation</li>
 <li>Form labels and inputs (SC 1.3.1, 4.1.2)</li>
@@ -2313,7 +2780,7 @@ app.get('/ada-compliance-checker', (req, res) => {
 <li>Keyboard navigation and focus management (SC 2.1.1, 2.4.7)</li>
 <li>Link text quality (SC 2.4.4)</li>
 <li>Page language, title, and landmarks (SC 3.1.1, 2.4.2)</li>
-<li>And 16 more critical checks...</li>
+<li>And 31 more critical checks...</li>
 </ul>
 
 <div class="warning">
@@ -2413,7 +2880,7 @@ app.get('/ada-website-compliance', (req, res) => {
 app.get('/wcag-compliance-checker', (req, res) => {
   res.send(seoPage(
     'Free WCAG 2.1 Compliance Checker — Test Your Website | ComplianceShield',
-    'Free WCAG 2.1 compliance checker with 23 automated checks. Test against Level A and AA criteria. Get fix instructions for every issue.',
+    'Free WCAG 2.1 compliance checker with 38 automated checks. Test against Level A and AA criteria. Get fix instructions for every issue.',
     'WCAG 2.1 Compliance Checker',
     `<p>Test your website against <strong>WCAG 2.1 Level A and AA</strong> success criteria with our free automated checker. Get detailed results with fix instructions for every issue found.</p>
 
@@ -2441,7 +2908,7 @@ app.get('/wcag-compliance-checker', (req, res) => {
 <p>Content must be robust enough to be interpreted by a wide variety of user agents, including assistive technologies like screen readers.</p>
 
 <h2>What Our WCAG Checker Tests</h2>
-<p>Our free scanner runs 23 automated checks covering the most critical and most commonly violated WCAG success criteria:</p>
+<p>Our free scanner runs 38 automated checks covering the most critical and most commonly violated WCAG success criteria:</p>
 <ul>
 <li>SC 1.1.1 — Non-text content (alt text)</li>
 <li>SC 1.3.1 — Info and relationships (headings, labels, landmarks)</li>
@@ -2453,7 +2920,7 @@ app.get('/wcag-compliance-checker', (req, res) => {
 <li>SC 2.4.7 — Focus visible</li>
 <li>SC 3.1.1 — Language of page</li>
 <li>SC 4.1.2 — Name, role, value</li>
-<li>And 13 more...</li>
+<li>And 28 more...</li>
 </ul>`
   ));
 });
